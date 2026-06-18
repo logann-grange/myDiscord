@@ -3,7 +3,7 @@
 
 #include <gtk/gtk.h>
 
-void show_login_window(GtkWidget *widget, gpointer data);
+void show_login_window(GtkApplication *app);
 
 
 

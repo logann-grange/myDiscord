@@ -3,7 +3,7 @@
         {
             "type": "shell",
             "label": "Build GTK file",
-            "command": "export PATH=/mingw64/bin:/usr/bin:$PATH; FILE=$(cygpath -u \"${file}\"); DIR=$(cygpath -u \"${fileDirname}\"); /mingw64/bin/gcc -fdiagnostics-color=always -g \"$FILE\" -o \"$DIR/${fileBasenameNoExtension}.exe\" $(/mingw64/bin/pkg-config --cflags --libs gtk4)",
+            "command": "export PATH=/mingw64/bin:/usr/bin:$PATH; FILE=$(cygpath -u \"${file}\"); DIR=$(cygpath -u \"${fileDirname}\"); /mingw64/bin/gcc -fdiagnostics-color=always -g \"$FILE\" -o \"$DIR/${fileBasenameNoExtension}.exe\" $(/mingw64/bin/pkg-config --cflags --libs gtk+-3.0)",
             "options": {
                 "shell": {
                     "executable": "C:\\msys64\\usr\\bin\\bash.exe",
@@ -15,7 +15,7 @@
                 "kind": "build",
                 "isDefault": true
             },
-            "detail": "Builds the active C file with GTK 4 flags from pkg-config."
+            "detail": "Builds the active C file with GTK 3 flags from pkg-config."
         }
     ],
     "version": "2.0.0"

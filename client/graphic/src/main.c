@@ -1,5 +1,5 @@
 #include <gtk/gtk.h>
-#include "app.h"
+#include "../include/app.h"
 
 static void on_activate(GtkApplication *app, gpointer data) {
     show_main_window(app);

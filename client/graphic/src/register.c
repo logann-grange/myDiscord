@@ -1,4 +1,4 @@
-#include "register.h"
+#include "../include/register.h"
 #include <string.h>
 
 static void on_register_clicked(GtkButton *btn, gpointer data) {

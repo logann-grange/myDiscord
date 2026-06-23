@@ -4,7 +4,7 @@ char *createMessage(int id, int id_user, time_t date,char *text, char *reaction,
 {
     Message *msg = malloc(sizeof(Message));
     msg->id = id;
-    msg->id_user = id_user;
+    msg->idUser = id_user;
     msg->date = date;
     msg->reaction = reaction;
     msg->status = status;
@@ -49,9 +49,7 @@ void deleteMessage(Message *message)
 
 void addReaction(Message *message, char *reaction)
 {
-    message->reaction = *reaction;
-
-
+    // message->reaction de forme : reaction1;reaction2;reaction3;
     int len = (*message->reaction == NULL) ? 0 : strlen(*message->text);
     char *new_reaction = realloc(*message->text, len + strlen(*reaction) + 1); // +1 pour '\0'
     if (new_reaction == NULL) {

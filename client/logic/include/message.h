@@ -4,7 +4,7 @@
 
 typedef struct {
     int id;
-    int id_user;
+    int idUser;
     char *text;
     time_t date;
     char *reaction;

@@ -1,6 +1,6 @@
-#include "../include/app.h"
-#include "../include/login.h"
-#include "../include/register.h"
+#include "../../include/menu_login/app.h"
+#include "../../include/menu_login/login.h"
+#include "../../include/menu_login/register.h"
 
 void show_main_window(GtkApplication *app) {
     AppWidgets *w = g_malloc(sizeof(AppWidgets));

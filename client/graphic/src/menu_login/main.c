@@ -1,4 +1,3 @@
-#include <gtk/gtk.h>
 #include "../../include/menu_login/app.h"
 
 static void on_activate(GtkApplication *app, gpointer data) {

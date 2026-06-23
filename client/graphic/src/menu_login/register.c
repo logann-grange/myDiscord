@@ -1,4 +1,5 @@
 #include "../../include/menu_login/register.h"
+#include "menu_login/register_logic.h"
 #include <string.h>
 
 static void on_register_clicked(GtkButton *btn, gpointer data) {
@@ -9,46 +10,27 @@ static void on_register_clicked(GtkButton *btn, gpointer data) {
     const char *email    = gtk_entry_get_text(GTK_ENTRY(w->entry_reg_email));
     const char *password = gtk_entry_get_text(GTK_ENTRY(w->entry_reg_password));
 
-    if (strlen(nom) == 0 || strlen(prenom) == 0 || strlen(pseudo) == 0 ||
-        strlen(email) == 0 || strlen(password) == 0) {
-        GtkWidget *dialog = gtk_message_dialog_new(GTK_WINDOW(w->window),
-            GTK_DIALOG_MODAL, GTK_MESSAGE_ERROR, GTK_BUTTONS_OK,
-            "Veuillez remplir tous les champs.");
-        gtk_widget_show_all(dialog);
-        g_signal_connect(dialog, "response", G_CALLBACK(gtk_widget_destroy), NULL);
-        return;
+    const char *message = NULL;
+
+    switch (validate_register(nom, prenom, pseudo, email, password)) {
+        case REGISTER_CHAMPS_VIDES:
+            message = "Veuillez remplir tous les champs."; break;
+        case REGISTER_PASSWORD_TROP_COURT:
+            message = "Le mot de passe doit contenir au moins 6 caractères."; break;
+        case REGISTER_PASSWORD_FAIBLE:
+            message = "Le mot de passe doit contenir au moins un chiffre ou un caractère spécial."; break;
+        case REGISTER_EMAIL_INVALIDE:
+            message = "Veuillez entrer une adresse email valide."; break;
+        case REGISTER_OK:
+            g_print("Register: %s %s / %s / %s\n", prenom, nom, pseudo, email);
+            // TODO: envoyer au serveur
+            return;
     }
 
-    else if (strlen(password) < 6) {
-        GtkWidget *dialog = gtk_message_dialog_new(GTK_WINDOW(w->window),
-            GTK_DIALOG_MODAL, GTK_MESSAGE_ERROR, GTK_BUTTONS_OK,
-            "Le mot de passe doit contenir au moins 6 caractères.");
-        gtk_widget_show_all(dialog);
-        g_signal_connect(dialog, "response", G_CALLBACK(gtk_widget_destroy), NULL);
-        return;
-    }
-
-    else if (password != NULL && (!strpbrk(password, "0123456789")|| !strpbrk (password,"!-_ù^$,?'" ))) {
-        GtkWidget *dialog = gtk_message_dialog_new(GTK_WINDOW(w->window),
-            GTK_DIALOG_MODAL, GTK_MESSAGE_ERROR, GTK_BUTTONS_OK,
-            "Le mot de passe doit contenir au moins un chiffre ou un caractère spécial.");
-        gtk_widget_show_all(dialog);
-        g_signal_connect(dialog, "response", G_CALLBACK(gtk_widget_destroy), NULL);
-        return;
-    }
-
-    else if (!strchr(email, '@')) {
-        GtkWidget *dialog = gtk_message_dialog_new(GTK_WINDOW(w->window),
-            GTK_DIALOG_MODAL, GTK_MESSAGE_ERROR, GTK_BUTTONS_OK,
-            "Veuillez entrer une adresse email valide.");
-        gtk_widget_show_all(dialog);
-        g_signal_connect(dialog, "response", G_CALLBACK(gtk_widget_destroy), NULL);
-        return;
-    }
-
-
-    g_print("Register: %s %s / %s / %s\n", prenom, nom, pseudo, email);
-    // TODO: envoyer au serveur
+    GtkWidget *dialog = gtk_message_dialog_new(GTK_WINDOW(w->window),
+        GTK_DIALOG_MODAL, GTK_MESSAGE_ERROR, GTK_BUTTONS_OK, "%s", message);
+    gtk_widget_show_all(dialog);
+    g_signal_connect(dialog, "response", G_CALLBACK(gtk_widget_destroy), NULL);
 }
 
 static void go_to_login(GtkButton *btn, gpointer data) {

@@ -1,22 +1,30 @@
 #include "../../include/menu_login/login.h"
-
+#include "menu_login/login_logic.h"
 
 static void on_login_clicked(GtkButton *btn, gpointer data) {
     AppWidgets *w = (AppWidgets *)data;
     const char *pseudo   = gtk_entry_get_text(GTK_ENTRY(w->entry_login_pseudo));
     const char *password = gtk_entry_get_text(GTK_ENTRY(w->entry_login_password));
 
-    if (strlen(pseudo) == 0 || strlen(password) == 0) {
-        GtkWidget *dialog = gtk_message_dialog_new(GTK_WINDOW(w->window),
-            GTK_DIALOG_MODAL, GTK_MESSAGE_ERROR, GTK_BUTTONS_OK,
-            "Veuillez remplir tous les champs.");
-        gtk_widget_show_all(dialog);
-        g_signal_connect(dialog, "response", G_CALLBACK(gtk_widget_destroy), NULL);
-        return;
+    const char *message = NULL;
+
+    switch (validate_login(pseudo, password)) {
+        case LOGIN_CHAMPS_VIDES:
+            message = "Veuillez remplir tous les champs."; break;
+        case LOGIN_PASSWORD_TROP_COURT:
+            message = "Le mot de passe doit contenir au moins 6 caractères."; break;
+        case LOGIN_OK:
+            g_print("Login: %s\n", pseudo);
+            // TODO: envoyer au serveur
+            return;
     }
-    g_print("Login: %s\n", pseudo);
-    // TODO: envoyer au serveur
+
+    GtkWidget *dialog = gtk_message_dialog_new(GTK_WINDOW(w->window),
+        GTK_DIALOG_MODAL, GTK_MESSAGE_ERROR, GTK_BUTTONS_OK, "%s", message);
+    gtk_widget_show_all(dialog);
+    g_signal_connect(dialog, "response", G_CALLBACK(gtk_widget_destroy), NULL);
 }
+
 
 static void go_to_register(GtkButton *btn, gpointer data) {
     AppWidgets *w = (AppWidgets *)data;

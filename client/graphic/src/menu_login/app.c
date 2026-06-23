@@ -6,7 +6,7 @@ void show_main_window(GtkApplication *app) {
     AppWidgets *w = g_malloc(sizeof(AppWidgets));
 
     GtkCssProvider *provider = gtk_css_provider_new();
-    gtk_css_provider_load_from_path(provider, "./client/graphic/src/style.css", NULL);
+    gtk_css_provider_load_from_path(provider, "./client/graphic/src/style/style.css", NULL);
     gtk_style_context_add_provider_for_screen(
         gdk_screen_get_default(),
         GTK_STYLE_PROVIDER(provider),

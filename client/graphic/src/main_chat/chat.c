@@ -12,7 +12,7 @@ void show_chat_window(GtkApplication *app) {
 
     // CSS
     GtkCssProvider *provider = gtk_css_provider_new();
-    gtk_css_provider_load_from_path(provider, "./client/graphic/src/main_chat/style_chat.css", NULL);
+    gtk_css_provider_load_from_path(provider, "./client/graphic/src/style/style_chat.css", NULL);
     gtk_style_context_add_provider_for_screen(
         gdk_screen_get_default(),
         GTK_STYLE_PROVIDER(provider),

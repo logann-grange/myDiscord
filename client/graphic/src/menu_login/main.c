@@ -1,7 +1,8 @@
-#include "../../include/main_chat/chat.h"
+
+#include "../../include/menu_login/app.h"
 
 static void on_activate(GtkApplication *app, gpointer data) {
-    show_chat_window(app);
+    show_main_window(app);
 }
 
 int main(int argc, char *argv[]) {

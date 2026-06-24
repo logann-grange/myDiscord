@@ -22,6 +22,7 @@ int main() {
     struct sockaddr_in serverAddr, clientAddr;
     socklen_t clientAddrSize = sizeof(clientAddr);
     char buffer[1024];
+    char message[1024];
 
 #ifdef _WIN32
     WSADATA wsaData;
@@ -73,14 +74,36 @@ int main() {
         return 1;
     }
 
-    int bytesReceived = recv(clientSocket, buffer, sizeof(buffer) - 1, 0);
-    if (bytesReceived > 0) {
-        buffer[bytesReceived] = '\0';
-        printf("Recu: %s\n", buffer);
-    }
+    printf("Client connecte. Tapez /quit pour fermer la conversation.\n");
 
-    char *response = "Bonjour du serveur!";
-    send(clientSocket, response, (int)strlen(response), 0);
+    while (1) {
+        /* Reception du message du client */
+        int bytesReceived = recv(clientSocket, buffer, sizeof(buffer) - 1, 0);
+        if (bytesReceived <= 0) {
+            printf("Client deconnecte.\n");
+            break;
+        }
+        buffer[bytesReceived] = '\0';
+        printf("Client: %s\n", buffer);
+
+        if (strcmp(buffer, "/quit") == 0) {
+            break;
+        }
+
+        /* Envoi d'une reponse */
+        printf("Vous: ");
+        fflush(stdout);
+        if (fgets(message, sizeof(message), stdin) == NULL) {
+            break;
+        }
+        message[strcspn(message, "\n")] = '\0';
+
+        send(clientSocket, message, (int)strlen(message), 0);
+
+        if (strcmp(message, "/quit") == 0) {
+            break;
+        }
+    }
 
     closesocket(clientSocket);
     closesocket(listenSocket);

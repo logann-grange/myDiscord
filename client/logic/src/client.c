@@ -23,7 +23,7 @@ int main(int argc, char *argv[]) {
     char message[1024];
     const char *serverIP = "10.10.6.228";
 
-    // Permet de passer l'IP en argument :
+    //Permet de passer l'IP en argument :
     if (argc > 1) {
         serverIP = argv[1];
     }
@@ -65,28 +65,33 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    printf("Connecte au serveur %s:8080\n", serverIP);
-    printf("Entrez votre message: ");
-    fflush(stdout);
+    printf("Connecte au serveur %s:8080. Tapez /quit pour fermer la conversation.\n", serverIP);
 
-    if (fgets(message, sizeof(message), stdin) == NULL) {
-        printf("Erreur de lecture du message\n");
-        closesocket(sock);
-#ifdef _WIN32
-        WSACleanup();
-#endif
-        return 1;
-    }
+    while (1) {
+        printf("Vous: ");
+        fflush(stdout);
+        if (fgets(message, sizeof(message), stdin) == NULL) {
+            break;
+        }
+        message[strcspn(message, "\n")] = '\0';
 
-    // Supprime le retour a la ligne laisse par fgets
-    message[strcspn(message, "\n")] = '\0';
+        send(sock, message, (int)strlen(message), 0);
 
-    send(sock, message, (int)strlen(message), 0);
+        if (strcmp(message, "/quit") == 0) {
+            break;
+        }
 
-    int bytesReceived = recv(sock, buffer, sizeof(buffer) - 1, 0);
-    if (bytesReceived > 0) {
+        int bytesReceived = recv(sock, buffer, sizeof(buffer) - 1, 0);
+        if (bytesReceived <= 0) {
+            printf("Serveur deconnecte.\n");
+            break;
+        }
         buffer[bytesReceived] = '\0';
-        printf("Reponse du serveur: %s\n", buffer);
+        printf("Serveur: %s\n", buffer);
+
+        if (strcmp(buffer, "/quit") == 0) {
+            break;
+        }
     }
 
     closesocket(sock);

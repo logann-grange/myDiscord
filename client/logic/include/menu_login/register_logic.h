@@ -1,5 +1,11 @@
 #ifndef REGISTER_LOGIC_H
 #define REGISTER_LOGIC_H
+#include <openssl/evp.h>
+#include <openssl/rand.h>
+#include <string.h>
+#define SALT_LEN   16
+#define HASH_LEN   32
+#define ITERATIONS 100000 
 
 typedef enum {
     REGISTER_OK,
@@ -11,5 +17,9 @@ typedef enum {
 
 RegisterResult validate_register(const char *nom, const char *prenom, const char *pseudo,
                                  const char *email, const char *password);
+
+void byte_to_hex(const unsigned char *bytes, int len, char *hex_str);
+
+void hash_password(const char *password);
 
 #endif

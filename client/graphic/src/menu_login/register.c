@@ -1,6 +1,5 @@
 #include "../../include/menu_login/register.h"
 #include "menu_login/register_logic.h"
-#include <string.h>
 
 static void on_register_clicked(GtkButton *btn, gpointer data) {
     AppWidgets *w = (AppWidgets *)data;
@@ -22,6 +21,7 @@ static void on_register_clicked(GtkButton *btn, gpointer data) {
         case REGISTER_EMAIL_INVALIDE:
             message = "Veuillez entrer une adresse email valide."; break;
         case REGISTER_OK:
+            hash_password(password);
             g_print("Register: %s %s / %s / %s\n", prenom, nom, pseudo, email);
             // TODO: envoyer au serveur
             return;

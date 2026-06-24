@@ -15,6 +15,12 @@ static void on_login_clicked(GtkButton *btn, gpointer data) {
             message = "Le mot de passe doit contenir au moins 6 caractères."; break;
         case LOGIN_OK:
             g_print("Login: %s\n", pseudo);
+              // Temporaire : sel fictif pour tester le hachage
+            unsigned char fake_salt[SALT_LEN] = {0};
+            char hash_hex[HASH_LEN * 2 + 1];
+            hash_password_with_salt(password, fake_salt, hash_hex);
+            printf("Hash login (test): %s\n", hash_hex);
+            // TODO: vrai sel reçu du serveur
             gtk_widget_destroy(w->window);
             show_chat_window(w->app);
             g_free(w);

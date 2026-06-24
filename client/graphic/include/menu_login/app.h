@@ -6,6 +6,7 @@
 typedef struct {
     GtkWidget *window;
     GtkWidget *stack;
+    GtkApplication *app;
     GtkWidget *entry_login_pseudo;
     GtkWidget *entry_login_password;
     GtkWidget *entry_reg_nom;

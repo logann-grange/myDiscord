@@ -6,9 +6,23 @@ static const char *reactions[] = {"👍", "❤️", "😂", "😮", "😢", "�
 static const int nb_reactions = 6;
 
 static void on_reaction_clicked(GtkButton *btn, gpointer data) {
-    const char *emoji = gtk_button_get_label(btn);
-    g_print("Réaction ajoutée : %s\n", emoji);
+    ReactionData *rd = (ReactionData *)data;
+
+    // Créer un bouton de réaction avec compteur
+    GtkWidget *reaction_btn = gtk_button_new_with_label("");
+    char label[32];
+    snprintf(label, sizeof(label), "%s 1", rd->emoji);
+    gtk_button_set_label(GTK_BUTTON(reaction_btn), label);
+    gtk_widget_set_name(reaction_btn, "reaction-count-btn");
+    gtk_box_pack_start(GTK_BOX(rd->reactions_box), reaction_btn, FALSE, FALSE, 0);
+    gtk_widget_show(reaction_btn);
+
+    g_print("Réaction ajoutée : %s\n", rd->emoji);
     // TODO: envoyer la réaction au serveur
+}
+
+static void on_reaction_data_free(gpointer data, GClosure *closure) {
+    g_free(data);
 }
 
 static void on_send_clicked(GtkButton *btn, gpointer data) {
@@ -83,12 +97,24 @@ GtkWidget *build_message(const char *auteur, const char *heure, const char *text
     gtk_widget_set_margin_start(popover_box, 6);
     gtk_widget_set_margin_end(popover_box, 6);
 
-    for (int i = 0; i < nb_reactions; i++) {
-        GtkWidget *emoji_btn = gtk_button_new_with_label(reactions[i]);
-        gtk_widget_set_name(emoji_btn, "emoji-btn");
-        g_signal_connect(emoji_btn, "clicked", G_CALLBACK(on_reaction_clicked), NULL);
-        gtk_box_pack_start(GTK_BOX(popover_box), emoji_btn, FALSE, FALSE, 0);
-    }
+  for (int i = 0; i < nb_reactions; i++) {
+    GtkWidget *emoji_btn = gtk_button_new_with_label(reactions[i]);
+    gtk_widget_set_name(emoji_btn, "emoji-btn");
+    
+    ReactionData *rd = g_malloc(sizeof(ReactionData));
+    rd->emoji = reactions[i];
+    rd->reactions_box = reactions_box;
+    
+   g_signal_connect_data(emoji_btn, "clicked",
+        G_CALLBACK(on_reaction_clicked),
+        rd,
+        on_reaction_data_free,
+        0);
+
+    gtk_box_pack_start(GTK_BOX(popover_box), emoji_btn, FALSE, FALSE, 0);
+
+    gtk_box_pack_start(GTK_BOX(popover_box), emoji_btn, FALSE, FALSE, 0);
+}
 
     gtk_container_add(GTK_CONTAINER(popover), popover_box);
     gtk_widget_show_all(popover_box);

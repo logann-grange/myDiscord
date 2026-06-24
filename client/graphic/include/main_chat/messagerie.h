@@ -5,5 +5,9 @@
 
 GtkWidget *build_messagerie(ChatWidgets *w);
 GtkWidget *build_message(const char *auteur, const char *heure, const char *texte, const char avatar_lettre);
+typedef struct {
+    GtkWidget *reactions_box;
+    const char *emoji;
+} ReactionData;
 
 #endif

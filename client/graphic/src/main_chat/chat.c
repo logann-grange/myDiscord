@@ -2,6 +2,11 @@
 #include "../../include/main_chat/side_bar.h"
 #include "../../include/main_chat/messagerie.h"
 
+static void on_chat_window_destroy(GtkWidget *widget, gpointer data) {
+    ChatWidgets *w = (ChatWidgets *)data;
+    g_free(w);
+}
+
 void show_chat_window(GtkApplication *app) {
     ChatWidgets *w = g_malloc(sizeof(ChatWidgets));
 

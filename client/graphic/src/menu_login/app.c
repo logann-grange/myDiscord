@@ -4,6 +4,7 @@
 
 void show_main_window(GtkApplication *app) {
     AppWidgets *w = g_malloc(sizeof(AppWidgets));
+     w->app = app;
 
     GtkCssProvider *provider = gtk_css_provider_new();
     gtk_css_provider_load_from_path(provider, "./client/graphic/src/style/style.css", NULL);
@@ -27,4 +28,9 @@ void show_main_window(GtkApplication *app) {
 
     gtk_container_add(GTK_CONTAINER(w->window), w->stack);
     gtk_widget_show_all(w->window);
+}
+
+static void on_app_window_destroy(GtkWidget *widget, gpointer data) {
+    AppWidgets *w = (AppWidgets *)data;
+    g_free(w);
 }

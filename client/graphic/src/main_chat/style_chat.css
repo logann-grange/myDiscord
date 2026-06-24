@@ -1,0 +1,259 @@
+* {
+    background-color: #36393f;
+    color: #dcddde;
+    font-family: "Segoe UI", sans-serif;
+}
+
+window {
+    background-color: #36393f;
+}
+
+/* ── Sidebar ── */
+#sidebar {
+    background-color: #2f3136;
+    min-width: 240px;
+}
+
+#server-header {
+    background-color: #2f3136;
+    padding: 4px 0;
+}
+
+#server-name {
+    color: #ffffff;
+    font-size: 15px;
+    font-weight: bold;
+}
+
+#category-label {
+    color: #8e9297;
+    font-size: 11px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+#channel {
+    background: none;
+    background-image: none;
+    box-shadow: none;
+    border: none;
+    color: #8e9297;
+    font-size: 14px;
+    border-radius: 4px;
+    padding: 4px 8px;
+    text-align: left;
+}
+
+#channel:hover {
+    background-color: rgba(255,255,255,0.05);
+    background-image: none;
+    color: #dcddde;
+}
+
+#channel-active {
+    background-color: rgba(255,255,255,0.1);
+    background-image: none;
+    box-shadow: none;
+    border: none;
+    color: #ffffff;
+    font-size: 14px;
+    border-radius: 4px;
+    padding: 4px 8px;
+    text-align: left;
+}
+
+/* ── Zone utilisateur ── */
+#user-area {
+    background-color: #292b2f;
+    padding: 8px;
+}
+
+#avatar {
+    background-color: #7289da;
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: bold;
+    min-width: 32px;
+    min-height: 32px;
+    border-radius: 50%;
+    padding: 4px;
+}
+
+#username {
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: bold;
+}
+
+#user-status {
+    color: #8e9297;
+    font-size: 11px;
+}
+
+#settings-btn {
+    background: none;
+    background-image: none;
+    box-shadow: none;
+    border: none;
+    color: #8e9297;
+    font-size: 16px;
+}
+
+#settings-btn:hover {
+    color: #dcddde;
+    background-image: none;
+}
+
+/* ── Header canal ── */
+#chan-header {
+    background-color: #36393f;
+    padding: 8px 16px;
+}
+
+#chan-name {
+    color: #ffffff;
+    font-size: 15px;
+    font-weight: bold;
+}
+
+#chan-sep {
+    color: #4f545c;
+    font-size: 14px;
+}
+
+#chan-desc {
+    color: #8e9297;
+    font-size: 13px;
+}
+
+/* ── Messages ── */
+#messages-box {
+    background-color: #36393f;
+    padding: 8px 0;
+}
+
+#message-box {
+    background-color: #36393f;
+    padding: 4px 16px;
+}
+
+#message-box:hover {
+    background-color: #32353b;
+}
+
+#msg-author {
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+#msg-time {
+    color: #72767d;
+    font-size: 11px;
+}
+
+#msg-text {
+    color: #dcddde;
+    font-size: 14px;
+}
+
+/* ── Réactions ── */
+#react-add-btn {
+    background: none;
+    background-image: none;
+    box-shadow: none;
+    border: 1px solid #4f545c;
+    border-radius: 10px;
+    color: #8e9297;
+    font-size: 12px;
+    padding: 1px 6px;
+    min-height: 0;
+}
+
+#react-add-btn:hover {
+    background-color: rgba(255,255,255,0.05);
+    background-image: none;
+    color: #dcddde;
+}
+
+#emoji-btn {
+    background: none;
+    background-image: none;
+    box-shadow: none;
+    border: none;
+    font-size: 18px;
+    padding: 4px;
+    min-height: 0;
+}
+
+#emoji-btn:hover {
+    background-color: rgba(255,255,255,0.1);
+    background-image: none;
+    border-radius: 4px;
+}
+
+/* ── Barre d'envoi ── */
+#input-area {
+    background-color: #36393f;
+    padding: 8px 16px;
+}
+
+#input-box {
+    background-color: #40444b;
+    border-radius: 8px;
+    padding: 4px 8px;
+}
+
+#input-entry {
+    background-color: #40444b;
+    background-image: none;
+    border: none;
+    box-shadow: none;
+    color: #dcddde;
+    font-size: 14px;
+}
+
+#input-plus, #input-emoji, #input-send {
+    background: none;
+    background-image: none;
+    box-shadow: none;
+    border: none;
+    color: #8e9297;
+    font-size: 18px;
+    padding: 4px;
+}
+
+#input-plus:hover, #input-emoji:hover, #input-send:hover {
+    color: #dcddde;
+    background-image: none;
+}
+
+#input-hint {
+    color: #72767d;
+    font-size: 11px;
+    margin-top: 2px;
+}
+
+separator {
+    background-color: #4f545c;
+    min-height: 1px;
+    min-width: 1px;
+}
+
+#reaction-count-btn {
+    background-color: rgba(114, 137, 218, 0.1);
+    background-image: none;
+    box-shadow: none;
+    border: 1px solid #7289da;
+    border-radius: 10px;
+    color: #7289da;
+    font-size: 12px;
+    padding: 1px 8px;
+    min-height: 0;
+}
+
+#reaction-count-btn:hover {
+    background-color: rgba(114, 137, 218, 0.3);
+    background-image: none;
+}

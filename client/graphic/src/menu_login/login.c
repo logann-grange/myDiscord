@@ -15,6 +15,9 @@ static void on_login_clicked(GtkButton *btn, gpointer data) {
             message = "Le mot de passe doit contenir au moins 6 caractères."; break;
         case LOGIN_OK:
             g_print("Login: %s\n", pseudo);
+            gtk_widget_destroy(w->window);
+            show_chat_window(w->app);
+            g_free(w);
             // TODO: envoyer au serveur
             return;
     }

@@ -6,11 +6,12 @@ typedef struct {
     char *name;
     char *password;
     char *email;
+    char *ip;
     char *rank;
     char *status;
 } User;
 
-User *createUser(int id, char *name, char *rank, char *status);
+User *createUser(int id, char *name, char *email, char *password, char *ip, char *rank, char *status);
 
 User **createUserList(); // prendre les valeur de la bdd
 

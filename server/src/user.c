@@ -1,10 +1,13 @@
 #include "../include/user.h"
 
-User *createUser(int id, char *name, char *rank, char *status) 
+User *createUser(int id, char *name, char *email, char *password, char *ip, char *rank, char *status) 
 {
     User *user = malloc(sizeof(User));
     user->id = id;
     user->name = *name;
+    user->email = *email;
+    user->password = *password;
+    user->ip = *ip;
     user->rank = *rank;
     user->status = *status;
 

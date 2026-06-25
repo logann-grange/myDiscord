@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #ifdef _WIN32
@@ -8,6 +9,9 @@
     #pragma comment(lib, "ws2_32.lib")
     typedef int socklen_t;
     #define THREAD_RET DWORD WINAPI
+    CRITICAL_SECTION clientsMutex;
+    #define LOCK() EnterCriticalSection(&clientsMutex)
+    #define UNLOCK() LeaveCriticalSection(&clientsMutex)
 #else
     #include <sys/socket.h>
     #include <netinet/in.h>
@@ -19,33 +23,115 @@
     #define SOCKET_ERROR (-1)
     #define closesocket close
     #define THREAD_RET void*
+    pthread_mutex_t clientsMutex = PTHREAD_MUTEX_INITIALIZER;
+    #define LOCK() pthread_mutex_lock(&clientsMutex)
+    #define UNLOCK() pthread_mutex_unlock(&clientsMutex)
 #endif
 
-SOCKET clientSocket;
+#define MAX_CLIENTS 10
+#define PORT 8080
+
+typedef struct {
+    SOCKET socket;
+    int active;
+    char pseudo[32];
+} Client;
+
+Client clients[MAX_CLIENTS];
+SOCKET listenSocket;
 volatile int running = 1;
 
-// Thread dedie a la reception :
-THREAD_RET receiveMessages(void *arg) {
+// Envoie un message a tous les clients actifs, sauf eventuellement l'emetteur
+void broadcastMessage(const char *message, SOCKET excludeSocket) {
+    LOCK();
+    for (int i = 0; i < MAX_CLIENTS; i++) {
+        if (clients[i].active && clients[i].socket != excludeSocket) {
+            send(clients[i].socket, message, (int)strlen(message), 0);
+        }
+    }
+    UNLOCK();
+}
+
+// Thread dedie a un client : recoit ses messages et les diffuse aux autres
+THREAD_RET handleClient(void *arg) {
+    int index = *(int*)arg;
+    free(arg);
+    SOCKET sock = clients[index].socket;
     char buffer[1024];
     int bytesReceived;
 
     while (running) {
-        bytesReceived = recv(clientSocket, buffer, sizeof(buffer) - 1, 0);
-        if (bytesReceived <= 0) {
-            if (running) {
-                printf("\nClient deconnecte.\n");
-            }
-            running = 0;
-            break;
-        }
+        bytesReceived = recv(sock, buffer, sizeof(buffer) - 1, 0);
+        if (bytesReceived <= 0) break;
         buffer[bytesReceived] = '\0';
-        printf("\nClient: %s\nVous: ", buffer);
+
+        char fullMessage[1100];
+        snprintf(fullMessage, sizeof(fullMessage), "%s: %s", clients[index].pseudo, buffer);
+        printf("\n%s\nVous: ", fullMessage);
         fflush(stdout);
 
-        if (strcmp(buffer, "/quit") == 0) {
-            running = 0;
-            break;
+        broadcastMessage(fullMessage, sock);
+
+        if (strcmp(buffer, "/quit") == 0) break;
+    }
+
+    closesocket(sock);
+    LOCK();
+    clients[index].active = 0;
+    UNLOCK();
+    printf("\n%s deconnecte.\nVous: ", clients[index].pseudo);
+    fflush(stdout);
+
+#ifdef _WIN32
+    return 0;
+#else
+    return NULL;
+#endif
+}
+
+// Thread d'acceptation : tourne en boucle pour accepter de nouveaux clients
+THREAD_RET acceptClients(void *arg) {
+    struct sockaddr_in clientAddr;
+    socklen_t clientAddrSize = sizeof(clientAddr);
+
+    while (running) {
+        SOCKET newSocket = accept(listenSocket, (struct sockaddr*)&clientAddr, &clientAddrSize);
+        if (newSocket == INVALID_SOCKET) {
+            if (running) printf("Erreur accept\n");
+            continue;
         }
+
+        LOCK();
+        int slot = -1;
+        for (int i = 0; i < MAX_CLIENTS; i++) {
+            if (!clients[i].active) { slot = i; break; }
+        }
+        if (slot == -1) {
+            UNLOCK();
+            printf("\nServeur plein, connexion refusee.\nVous: ");
+            fflush(stdout);
+            closesocket(newSocket);
+            continue;
+        }
+        clients[slot].socket = newSocket;
+        clients[slot].active = 1;
+        snprintf(clients[slot].pseudo, sizeof(clients[slot].pseudo), "Client%d", slot + 1);
+        UNLOCK();
+
+        printf("\n%s connecte.\nVous: ", clients[slot].pseudo);
+        fflush(stdout);
+
+        int *indexArg = malloc(sizeof(int));
+        *indexArg = slot;
+
+#ifdef _WIN32
+        HANDLE h = CreateThread(NULL, 0, handleClient, indexArg, 0, NULL);
+        if (h) CloseHandle(h);
+#else
+        pthread_t tid;
+        pthread_create(&tid, NULL, handleClient, indexArg);
+        pthread_detach(tid);
+#endif
     }
 #ifdef _WIN32
     return 0;
@@ -55,9 +141,7 @@ THREAD_RET receiveMessages(void *arg) {
 }
 
 int main() {
-    SOCKET listenSocket;
-    struct sockaddr_in serverAddr, clientAddr;
-    socklen_t clientAddrSize = sizeof(clientAddr);
+    struct sockaddr_in serverAddr;
     char message[1024];
 
 #ifdef _WIN32
@@ -66,73 +150,50 @@ int main() {
         printf("Erreur WSAStartup\n");
         return 1;
     }
+    InitializeCriticalSection(&clientsMutex);
 #endif
+
+    for (int i = 0; i < MAX_CLIENTS; i++) clients[i].active = 0;
 
     listenSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (listenSocket == INVALID_SOCKET) {
         printf("Erreur creation socket\n");
-#ifdef _WIN32
-        WSACleanup();
-#endif
         return 1;
     }
 
+    int opt = 1;
+#ifdef _WIN32
+    setsockopt(listenSocket, SOL_SOCKET, SO_REUSEADDR, (const char*)&opt, sizeof(opt));
+#else
+    setsockopt(listenSocket, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+#endif
+
     serverAddr.sin_family = AF_INET;
     serverAddr.sin_addr.s_addr = INADDR_ANY;
-    serverAddr.sin_port = htons(8080);
+    serverAddr.sin_port = htons(PORT);
 
     if (bind(listenSocket, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) == SOCKET_ERROR) {
         printf("Erreur bind\n");
         closesocket(listenSocket);
-#ifdef _WIN32
-        WSACleanup();
-#endif
         return 1;
     }
 
     if (listen(listenSocket, SOMAXCONN) == SOCKET_ERROR) {
         printf("Erreur listen\n");
         closesocket(listenSocket);
-#ifdef _WIN32
-        WSACleanup();
-#endif
         return 1;
     }
 
-    printf("En attente de connexion sur le port 8080...\n");
-    clientSocket = accept(listenSocket, (struct sockaddr*)&clientAddr, &clientAddrSize);
-    if (clientSocket == INVALID_SOCKET) {
-        printf("Erreur accept\n");
-        closesocket(listenSocket);
-#ifdef _WIN32
-        WSACleanup();
-#endif
-        return 1;
-    }
+    printf("Serveur en attente de connexions sur le port %d...\n", PORT);
 
-    printf("Client connecte. Tapez /quit pour fermer la conversation.\n");
-
-    // Lancement du thread de reception en arriere-plan
 #ifdef _WIN32
-    HANDLE recvThread = CreateThread(NULL, 0, receiveMessages, NULL, 0, NULL);
-    if (recvThread == NULL) {
-        printf("Erreur creation thread\n");
-        closesocket(clientSocket);
-        closesocket(listenSocket);
-        WSACleanup();
-        return 1;
-    }
+    HANDLE acceptThread = CreateThread(NULL, 0, acceptClients, NULL, 0, NULL);
 #else
-    pthread_t recvThread;
-    if (pthread_create(&recvThread, NULL, receiveMessages, NULL) != 0) {
-        printf("Erreur creation thread\n");
-        closesocket(clientSocket);
-        closesocket(listenSocket);
-        return 1;
-    }
+    pthread_t acceptThread;
+    pthread_create(&acceptThread, NULL, acceptClients, NULL);
 #endif
 
-    // thread principal s'occupe de l'envoi
+    // Le thread principal diffuse les messages de l'admin a tous les clients
     printf("Vous: ");
     fflush(stdout);
     while (running) {
@@ -142,33 +203,25 @@ int main() {
         }
         message[strcspn(message, "\n")] = '\0';
 
-        if (send(clientSocket, message, (int)strlen(message), 0) == SOCKET_ERROR) {
-            running = 0;
-            break;
-        }
+        char fullMessage[1100];
+        snprintf(fullMessage, sizeof(fullMessage), "Serveur: %s", message);
+        broadcastMessage(fullMessage, INVALID_SOCKET);
 
         if (strcmp(message, "/quit") == 0) {
             running = 0;
             break;
         }
-
-        if (running) {
-            printf("Vous: ");
-            fflush(stdout);
-        }
+        printf("Vous: ");
+        fflush(stdout);
     }
 
-    closesocket(clientSocket); // debloque le thread de reception s'il attend un recv()
-
-#ifdef _WIN32
-    WaitForSingleObject(recvThread, 2000);
-    CloseHandle(recvThread);
-#else
-    pthread_join(recvThread, NULL);
-#endif
+    LOCK();
+    for (int i = 0; i < MAX_CLIENTS; i++) {
+        if (clients[i].active) closesocket(clients[i].socket);
+    }
+    UNLOCK();
 
     closesocket(listenSocket);
-
 #ifdef _WIN32
     WSACleanup();
 #endif

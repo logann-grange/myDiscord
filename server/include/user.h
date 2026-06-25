@@ -4,6 +4,8 @@
 typedef struct {
     int id;
     char *name;
+    char *firstName;
+    char *pseudo;
     char *password;
     char *email;
     char *ip;
@@ -11,7 +13,7 @@ typedef struct {
     char *status;
 } User;
 
-User *createUser(int id, char *name, char *email, char *password, char *ip, char *rank, char *status);
+User *createUser(int id, char *name, char *firstName, char *pseudo, char *email, char *password, char *ip, char *rank, char *status);
 
 User **createUserList(); // prendre les valeur de la bdd
 
@@ -19,4 +21,4 @@ void changeUserRank(User *user, char *rank);
 
 void changeUserStatus(User *user, char *status);
 
-void changeUserName(User *user, char *name);
+void changePseudo(User *user, char *pseudo);

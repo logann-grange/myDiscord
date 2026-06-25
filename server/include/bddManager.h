@@ -4,6 +4,8 @@
 
 PGconn bddConnexion();
 
-char *bddSelect(char **fields, char **params, int size);
+char ***dbbSelect(PGconn *conn, char **fields, char **params, int size, int *out_nrows, int *out_ncols);
 
-PGresult *dbbSelect(PGconn *conn, char **fields, char **params, int size);
+//PGresult *dbbSelect(PGconn *conn, char **fields, char **params, int size);
+
+void dbbFreeResult(char ***table, int nrows, int ncols);

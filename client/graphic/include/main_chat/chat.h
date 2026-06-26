@@ -4,7 +4,7 @@
 #include <gtk/gtk.h>
 
 typedef enum{
-ROLE_UTULISATEUR,
+ROLE_UTILISATEUR,
 ROLE_MODERATEUR,
 ROLE_ADMINISTRATEUR
 

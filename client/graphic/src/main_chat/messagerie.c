@@ -6,7 +6,6 @@ static const char *reactions[] = {"👍", "❤️", "😂", "😮", "😢", "�
 static const int nb_reactions = 6;
 
 
-
 static void on_reaction_data_free(gpointer data, GClosure *closure) {
     g_free(data);
 }

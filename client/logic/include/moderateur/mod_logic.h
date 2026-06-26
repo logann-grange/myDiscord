@@ -8,8 +8,8 @@ typedef enum {
     MOD_ERREUR_CIBLE_INVALIDE,
 } ModResult;
 
-ModResult kick_user(const char *pseudo_cible, UserRole role_executeur);
-ModResult delete_message(const char *message_id, UserRole role_executeur);
-ModResult timeout_user(const char *pseudo_cible, int duree, UserRole role_executeur);
+ModResult kick_user(const char *pseudo_cible, UserRole role_executeur,UserRole role_cible);
+ModResult delete_message(const char *message_id, UserRole role_executeur,UserRole role_cible);
+ModResult timeout_user(const char *pseudo_cible, int duree, UserRole role_executeur,UserRole role_cible);
 
 #endif

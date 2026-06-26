@@ -1,9 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "../include/channel.h"
-#include "../include/user.h"
-#include "../include/message.h"
+// #include "../include/channel.h"
+// #include "../include/user.h"
+// #include "../include/message.h"
 
 
 #ifdef _WIN32
@@ -45,11 +45,18 @@ Client clients[MAX_CLIENTS];
 SOCKET listenSocket;
 volatile int running = 1;
 
-// Envoie un message a tous les clients actifs, sauf eventuellement l'emetteur
+// Envoie un message a tous les clients actifs
 void broadcastMessage(const char *message, SOCKET excludeSocket) {
     LOCK();
     for (int i = 0; i < MAX_CLIENTS; i++) {
         if (clients[i].active && clients[i].socket != excludeSocket) {
+
+            // Si le message vient d'un client (pas du serveur) que le destinataire est "Client3",
+            // on ne lui envoie rien.
+            if (excludeSocket != INVALID_SOCKET && strcmp(clients[i].pseudo, "Client3") == 0) {
+                continue;
+            }
+
             send(clients[i].socket, message, (int)strlen(message), 0);
         }
     }

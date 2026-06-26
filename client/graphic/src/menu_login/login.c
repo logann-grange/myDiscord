@@ -21,7 +21,7 @@ static void on_login_clicked(GtkButton *btn, gpointer data) {
             hash_password_with_salt(password, fake_salt, hash_hex);
             printf("Hash login (test): %s\n", hash_hex);
             // TODO: vrai sel reçu du serveur
-            gtk_widget_destroy(w->window);
+            gtk_widget_hide(w->window);
             show_chat_window(w->app);
             g_free(w);
             // TODO: envoyer au serveur

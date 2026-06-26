@@ -1,6 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "../include/channel.h"
+#include "../include/user.h"
+#include "../include/message.h"
+
 
 #ifdef _WIN32
     #include <winsock2.h>
@@ -139,6 +143,7 @@ THREAD_RET acceptClients(void *arg) {
     return NULL;
 #endif
 }
+
 
 int main() {
     struct sockaddr_in serverAddr;

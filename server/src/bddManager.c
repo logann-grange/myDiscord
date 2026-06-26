@@ -3,7 +3,7 @@
 PGconn *bddConnexion(void)
 {
     PGconn *conn = PQconnectdb(
-        "host=10.10.42.112 port=5432 dbname=Discord user=postgres password=C-L-M|130142254517%3");
+        "host=10.10.41.112 port=5432 dbname=discord user=admin password=C-L-M|130142254517%3");
 
     if (PQstatus(conn) != CONNECTION_OK) {
         fprintf(stderr, "Connexion échouée: %s\n", PQerrorMessage(conn));
@@ -152,4 +152,14 @@ void bddFreeResult(char ***table, int nrows, int ncols)
         free(table[i]);
     }
     free(table);
+}
+
+int main() {
+    PGconn *conn = bddConnexion();
+    char *fields[] = {"email", "nom", "prenom", "pseudo", "mot de passe", "statut", "role"};
+    char *params[] = {"admin@discord.fr", "admin", "admin", "admin", "admin", "", "admin"};
+
+
+    bddInsert(conn, "user", fields, params, 7);
+    return 0;
 }

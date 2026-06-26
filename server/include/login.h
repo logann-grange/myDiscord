@@ -1,7 +1,7 @@
 #include "user.h"
 #include "bddManager.h"
 
-User login(char *email, char* password, char *ip);
+User *login(char *email, char *password, char *ip);
 
-void registerUser(char *name, char *email, char *password);
+int registerUser(char name, char *firstName, char *pseudo, char *email, char *password);
 

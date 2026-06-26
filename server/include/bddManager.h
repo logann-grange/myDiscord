@@ -2,10 +2,10 @@
 #include <string.h>
 #include <stdlib.h>
 
-PGconn bddConnexion();
+PGconn *bddConnexion();
 
-char ***dbbSelect(PGconn *conn, char **fields, char **params, int size, int *out_nrows, int *out_ncols);
+char ***bddSelect(PGconn *conn, char **fields, char **params, int size, int *out_nrows, int *out_ncols);
 
-//PGresult *dbbSelect(PGconn *conn, char **fields, char **params, int size);
+void bddInsert(PGconn *conn, const char *tableName, char **fields, char **params, int size);
 
-void dbbFreeResult(char ***table, int nrows, int ncols);
+void bddFreeResult(char ***table, int nrows, int ncols);

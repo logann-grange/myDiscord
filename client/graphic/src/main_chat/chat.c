@@ -5,6 +5,7 @@
 static void on_chat_window_destroy(GtkWidget *widget, gpointer data) {
     ChatWidgets *w = (ChatWidgets *)data;
     g_free(w);
+    gtk_main_quit();
 }
 
 void show_chat_window(GtkApplication *app) {
@@ -40,4 +41,5 @@ void show_chat_window(GtkApplication *app) {
     gtk_box_pack_start(GTK_BOX(w->main_box), w->chat_area, TRUE, TRUE, 0);
 
     gtk_widget_show_all(w->window);
+    g_signal_connect(w->window, "destroy", G_CALLBACK(on_chat_window_destroy), w);
 }

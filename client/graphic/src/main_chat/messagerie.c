@@ -5,10 +5,15 @@
 static const char *reactions[] = {"👍", "❤️", "😂", "😮", "😢", "🔥"};
 static const int nb_reactions = 6;
 
+
+
+static void on_reaction_data_free(gpointer data, GClosure *closure) {
+    g_free(data);
+}
+
 static void on_reaction_clicked(GtkButton *btn, gpointer data) {
     ReactionData *rd = (ReactionData *)data;
 
-    // Créer un bouton de réaction avec compteur
     GtkWidget *reaction_btn = gtk_button_new_with_label("");
     char label[32];
     snprintf(label, sizeof(label), "%s 1", rd->emoji);
@@ -17,25 +22,23 @@ static void on_reaction_clicked(GtkButton *btn, gpointer data) {
     gtk_box_pack_start(GTK_BOX(rd->reactions_box), reaction_btn, FALSE, FALSE, 0);
     gtk_widget_show(reaction_btn);
 
-    g_print("Réaction ajoutée : %s\n", rd->emoji);
+    printf("Réaction ajoutée : %s\n", rd->emoji);
     // TODO: envoyer la réaction au serveur
 }
 
-static void on_reaction_data_free(gpointer data, GClosure *closure) {
-    g_free(data);
-}
 
 static void on_send_clicked(GtkButton *btn, gpointer data) {
     GtkEntry *entry = GTK_ENTRY(data);
     const char *text = gtk_entry_get_text(entry);
     if (strlen(text) == 0) return;
-    g_print("Message envoyé : %s\n", text);
+    printf("Message envoyé : %s\n", text);
     gtk_entry_set_text(entry, "");
     // TODO: envoyer au serveur
 }
 
+
 static void on_entry_activate(GtkEntry *entry, gpointer data) {
-    on_send_clicked(NULL, entry);
+    on_send_clicked(NULL, GTK_BUTTON(data));
 }
 
 static void on_react_btn_clicked(GtkButton *btn, gpointer data) {
@@ -44,7 +47,6 @@ static void on_react_btn_clicked(GtkButton *btn, gpointer data) {
 }
 
 GtkWidget *build_message(const char *auteur, const char *heure, const char *texte, const char avatar_lettre) {
-    // Conteneur principal du message
     GtkWidget *msg_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10);
     gtk_widget_set_name(msg_box, "message-box");
     gtk_widget_set_margin_top(msg_box, 6);
@@ -59,11 +61,11 @@ GtkWidget *build_message(const char *auteur, const char *heure, const char *text
     gtk_widget_set_valign(avatar, GTK_ALIGN_START);
     gtk_box_pack_start(GTK_BOX(msg_box), avatar, FALSE, FALSE, 0);
 
-    // Contenu du message
+    // Contenu
     GtkWidget *content = gtk_box_new(GTK_ORIENTATION_VERTICAL, 2);
     gtk_box_pack_start(GTK_BOX(msg_box), content, TRUE, TRUE, 0);
 
-    // Header (auteur + heure)
+    // Header auteur + heure
     GtkWidget *header = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
     GtkWidget *lbl_auteur = gtk_label_new(auteur);
     gtk_widget_set_name(lbl_auteur, "msg-author");
@@ -73,7 +75,7 @@ GtkWidget *build_message(const char *auteur, const char *heure, const char *text
     gtk_box_pack_start(GTK_BOX(header), lbl_heure, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(content), header, FALSE, FALSE, 0);
 
-    // Texte du message
+    // Texte
     GtkWidget *lbl_texte = gtk_label_new(texte);
     gtk_widget_set_name(lbl_texte, "msg-text");
     gtk_widget_set_halign(lbl_texte, GTK_ALIGN_START);
@@ -81,12 +83,11 @@ GtkWidget *build_message(const char *auteur, const char *heure, const char *text
     gtk_label_set_xalign(GTK_LABEL(lbl_texte), 0.0);
     gtk_box_pack_start(GTK_BOX(content), lbl_texte, FALSE, FALSE, 0);
 
-    // Zone réactions + bouton réagir
+    // Réactions
     GtkWidget *reactions_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 4);
     gtk_widget_set_margin_top(reactions_box, 4);
     gtk_box_pack_start(GTK_BOX(content), reactions_box, FALSE, FALSE, 0);
 
-    // Popover pour choisir une réaction
     GtkWidget *react_btn = gtk_button_new_with_label("😊+");
     gtk_widget_set_name(react_btn, "react-add-btn");
 
@@ -97,28 +98,25 @@ GtkWidget *build_message(const char *auteur, const char *heure, const char *text
     gtk_widget_set_margin_start(popover_box, 6);
     gtk_widget_set_margin_end(popover_box, 6);
 
-  for (int i = 0; i < nb_reactions; i++) {
-    GtkWidget *emoji_btn = gtk_button_new_with_label(reactions[i]);
-    gtk_widget_set_name(emoji_btn, "emoji-btn");
-    
-    ReactionData *rd = g_malloc(sizeof(ReactionData));
-    rd->emoji = reactions[i];
-    rd->reactions_box = reactions_box;
-    
-   g_signal_connect_data(emoji_btn, "clicked",
-        G_CALLBACK(on_reaction_clicked),
-        rd,
-        on_reaction_data_free,
-        0);
+    for (int i = 0; i < nb_reactions; i++) {
+        GtkWidget *emoji_btn = gtk_button_new_with_label(reactions[i]);
+        gtk_widget_set_name(emoji_btn, "emoji-btn");
 
-    gtk_box_pack_start(GTK_BOX(popover_box), emoji_btn, FALSE, FALSE, 0);
+        ReactionData *rd = g_malloc(sizeof(ReactionData));
+        rd->emoji = reactions[i];
+        rd->reactions_box = reactions_box;
 
-    gtk_box_pack_start(GTK_BOX(popover_box), emoji_btn, FALSE, FALSE, 0);
-}
+        g_signal_connect_data(emoji_btn, "clicked",
+            G_CALLBACK(on_reaction_clicked),
+            rd,
+            on_reaction_data_free,
+            0);
+
+        gtk_box_pack_start(GTK_BOX(popover_box), emoji_btn, FALSE, FALSE, 0);
+    }
 
     gtk_container_add(GTK_CONTAINER(popover), popover_box);
     gtk_widget_show_all(popover_box);
-
     g_signal_connect(react_btn, "clicked", G_CALLBACK(on_react_btn_clicked), popover);
     gtk_box_pack_start(GTK_BOX(reactions_box), react_btn, FALSE, FALSE, 0);
 
@@ -129,7 +127,7 @@ GtkWidget *build_messagerie(ChatWidgets *w) {
     GtkWidget *main_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
     gtk_widget_set_name(main_box, "chat-main");
 
-    // Header du canal
+    // Header canal
     GtkWidget *header = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
     gtk_widget_set_name(header, "chan-header");
     gtk_widget_set_margin_start(header, 16);
@@ -137,9 +135,10 @@ GtkWidget *build_messagerie(ChatWidgets *w) {
     gtk_widget_set_margin_top(header, 12);
     gtk_widget_set_margin_bottom(header, 12);
 
-    GtkWidget *chan_name = gtk_label_new("# général");
-    gtk_widget_set_name(chan_name, "chan-name");
-    gtk_box_pack_start(GTK_BOX(header), chan_name, FALSE, FALSE, 0);
+    // Stocke le label dans ChatWidgets pour le modifier plus tard
+    w->chan_name_label = gtk_label_new("# général");
+    gtk_widget_set_name(w->chan_name_label, "chan-name");
+    gtk_box_pack_start(GTK_BOX(header), w->chan_name_label, FALSE, FALSE, 0);
 
     GtkWidget *sep = gtk_label_new("—");
     gtk_widget_set_name(sep, "chan-sep");
@@ -152,31 +151,26 @@ GtkWidget *build_messagerie(ChatWidgets *w) {
     gtk_box_pack_start(GTK_BOX(main_box), header, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(main_box), gtk_separator_new(GTK_ORIENTATION_HORIZONTAL), FALSE, FALSE, 0);
 
-    // Zone scrollable des messages
+    // Zone scrollable messages
     GtkWidget *scroll = gtk_scrolled_window_new(NULL, NULL);
     gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scroll),
         GTK_POLICY_NEVER, GTK_POLICY_AUTOMATIC);
     gtk_box_pack_start(GTK_BOX(main_box), scroll, TRUE, TRUE, 0);
 
-    GtkWidget *messages_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
-    gtk_widget_set_name(messages_box, "messages-box");
-    gtk_container_add(GTK_CONTAINER(scroll), messages_box);
+    // Stocke messages_box dans ChatWidgets
+    w->messages_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+    gtk_widget_set_name(w->messages_box, "messages-box");
+    gtk_container_add(GTK_CONTAINER(scroll), w->messages_box);
 
     // Messages de test
-    gtk_box_pack_start(GTK_BOX(messages_box),
-        build_message("clara_dev", "19:31", "Salut tout le monde ! Vous avez regardé la conf de hier soir ?", 'C'),
+    gtk_box_pack_start(GTK_BOX(w->messages_box),
+        build_message("clara_dev", "19:31", "Salut tout le monde !", 'C'),
         FALSE, FALSE, 0);
-    gtk_box_pack_start(GTK_BOX(messages_box),
-        build_message("theo.js", "19:32", "Ouais, la partie sur les Server Components était vraiment bien !", 'T'),
+    gtk_box_pack_start(GTK_BOX(w->messages_box),
+        build_message("theo.js", "19:32", "Ouais, super conférence !", 'T'),
         FALSE, FALSE, 0);
-    gtk_box_pack_start(GTK_BOX(messages_box),
-        build_message("naomi_ux", "20:01", "J'ai pas pu regarder en live, y'a un replay quelque part ?", 'N'),
-        FALSE, FALSE, 0);
-    gtk_box_pack_start(GTK_BOX(messages_box),
-        build_message("clara_dev", "20:07", "Oui ! Sur leur chaîne YouTube, dispo depuis ce matin.", 'C'),
-        FALSE, FALSE, 0);
-    gtk_box_pack_start(GTK_BOX(messages_box),
-        build_message("rayan_backend", "20:31", "Moi ce qui m'intéresse c'est la partie base de données. Quelqu'un a des notes ?", 'R'),
+    gtk_box_pack_start(GTK_BOX(w->messages_box),
+        build_message("naomi_ux", "20:01", "Y'a un replay quelque part ?", 'N'),
         FALSE, FALSE, 0);
 
     // Barre d'envoi
@@ -196,20 +190,21 @@ GtkWidget *build_messagerie(ChatWidgets *w) {
     gtk_widget_set_name(btn_plus, "input-plus");
     gtk_box_pack_start(GTK_BOX(input_box), btn_plus, FALSE, FALSE, 0);
 
-    GtkWidget *entry = gtk_entry_new();
-    gtk_widget_set_name(entry, "input-entry");
-    gtk_entry_set_placeholder_text(GTK_ENTRY(entry), "Écrire dans #général...");
-    gtk_box_pack_start(GTK_BOX(input_box), entry, TRUE, TRUE, 0);
-    g_signal_connect(entry, "activate", G_CALLBACK(on_entry_activate), NULL);
+    // Stocke input_entry dans ChatWidgets
+    w->input_entry = gtk_entry_new();
+    gtk_widget_set_name(w->input_entry, "input-entry");
+    gtk_entry_set_placeholder_text(GTK_ENTRY(w->input_entry), "Écrire dans #général...");
+    gtk_box_pack_start(GTK_BOX(input_box), w->input_entry, TRUE, TRUE, 0);
+
+    GtkWidget *btn_send = gtk_button_new_with_label("➤");
+    gtk_widget_set_name(btn_send, "input-send");
+    g_signal_connect(btn_send, "clicked", G_CALLBACK(on_send_clicked), w->input_entry);
+    g_signal_connect(w->input_entry, "activate", G_CALLBACK(on_entry_activate), btn_send);
+    gtk_box_pack_start(GTK_BOX(input_box), btn_send, FALSE, FALSE, 0);
 
     GtkWidget *btn_emoji = gtk_button_new_with_label("😊");
     gtk_widget_set_name(btn_emoji, "input-emoji");
     gtk_box_pack_start(GTK_BOX(input_box), btn_emoji, FALSE, FALSE, 0);
-
-    GtkWidget *btn_send = gtk_button_new_with_label("➤");
-    gtk_widget_set_name(btn_send, "input-send");
-    g_signal_connect(btn_send, "clicked", G_CALLBACK(on_send_clicked), entry);
-    gtk_box_pack_start(GTK_BOX(input_box), btn_send, FALSE, FALSE, 0);
 
     gtk_box_pack_start(GTK_BOX(input_area), input_box, FALSE, FALSE, 0);
 
@@ -219,6 +214,9 @@ GtkWidget *build_messagerie(ChatWidgets *w) {
     gtk_box_pack_start(GTK_BOX(input_area), hint, FALSE, FALSE, 0);
 
     gtk_box_pack_start(GTK_BOX(main_box), input_area, FALSE, FALSE, 0);
+
+    // Canal actif par défaut
+    strncpy(w->current_channel, "général", sizeof(w->current_channel) - 1);
 
     return main_box;
 }

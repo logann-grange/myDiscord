@@ -1,16 +1,64 @@
 #include "../../include/main_chat/side_bar.h"
+#include "../../include/main_chat/messagerie.h"
 
-static void on_channel_clicked(GtkButton *btn, gpointer data) {
-    // TODO: changer de canal
-    const char *channel = gtk_button_get_label(btn);
-    g_print("Canal sélectionné : %s\n", channel);
+
+static void on_channel_data_free(gpointer data, GClosure *closure) {
+    g_free(data);
 }
 
-static GtkWidget *build_channel_button(const char *name, gboolean active) {
-    GtkWidget *btn = gtk_button_new_with_label(name);
+
+static void on_channel_clicked(GtkButton *btn, gpointer data) {
+    ChannelData *cd = (ChannelData *)data;
+    ChatWidgets *w = cd->w;
+
+    // Met à jour le canal actif
+    strncpy(w->current_channel, cd->channel_name, sizeof(w->current_channel) - 1);
+
+    // Met à jour le header
+    char header[72];
+    snprintf(header, sizeof(header), "# %s", cd->channel_name);
+    gtk_label_set_text(GTK_LABEL(w->chan_name_label), header);
+
+    // Met à jour la barre d'envoi
+    char placeholder[80];
+    snprintf(placeholder, sizeof(placeholder), "Écrire dans #%s...", cd->channel_name);
+    gtk_entry_set_placeholder_text(GTK_ENTRY(w->input_entry), placeholder);
+
+    // Vide et rafraîchit les messages
+    GList *children = gtk_container_get_children(GTK_CONTAINER(w->messages_box));
+    for (GList *l = children; l != NULL; l = l->next) {
+        gtk_widget_destroy(GTK_WIDGET(l->data));
+    }
+    g_list_free(children);
+
+    // TODO: charger les vrais messages du canal depuis le serveur
+    // Pour l'instant message par défaut
+    GtkWidget *msg = build_message("Système", "00:00",
+        "Bienvenue dans ce canal !", 'S');
+    gtk_box_pack_start(GTK_BOX(w->messages_box), msg, FALSE, FALSE, 0);
+    gtk_widget_show_all(w->messages_box);
+
+    g_print("Canal changé : %s\n", cd->channel_name);
+}
+
+static GtkWidget *build_channel_button(const char *name, gboolean active, ChatWidgets *w) {
+    char label[72];
+    snprintf(label, sizeof(label), "# %s", name);
+
+    GtkWidget *btn = gtk_button_new_with_label(label);
     gtk_widget_set_name(btn, active ? "channel-active" : "channel");
     gtk_widget_set_halign(btn, GTK_ALIGN_FILL);
-    g_signal_connect(btn, "clicked", G_CALLBACK(on_channel_clicked), NULL);
+
+    ChannelData *cd = g_malloc(sizeof(ChannelData));
+    cd->w = w;
+    strncpy(cd->channel_name, name, sizeof(cd->channel_name) - 1);
+
+    g_signal_connect_data(btn, "clicked",
+        G_CALLBACK(on_channel_clicked),
+        cd,
+        on_channel_data_free,
+        0);
+
     return btn;
 }
 
@@ -23,6 +71,7 @@ static GtkWidget *build_category(const char *name) {
     return label;
 }
 
+
 GtkWidget *build_sidebar(ChatWidgets *w) {
     GtkWidget *sidebar = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
     gtk_widget_set_name(sidebar, "sidebar");
@@ -31,7 +80,6 @@ GtkWidget *build_sidebar(ChatWidgets *w) {
     // Header serveur
     GtkWidget *server_header = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
     gtk_widget_set_name(server_header, "server-header");
-    gtk_widget_set_margin_top(server_header, 0);
 
     GtkWidget *server_name = gtk_label_new("Dev Community");
     gtk_widget_set_name(server_name, "server-name");
@@ -42,10 +90,9 @@ GtkWidget *build_sidebar(ChatWidgets *w) {
     gtk_box_pack_start(GTK_BOX(server_header), server_name, TRUE, TRUE, 0);
     gtk_box_pack_start(GTK_BOX(sidebar), server_header, FALSE, FALSE, 0);
 
-    // Séparateur
     gtk_box_pack_start(GTK_BOX(sidebar), gtk_separator_new(GTK_ORIENTATION_HORIZONTAL), FALSE, FALSE, 0);
 
-    // Zone scrollable pour les canaux
+    // Zone scrollable
     GtkWidget *scroll = gtk_scrolled_window_new(NULL, NULL);
     gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scroll),
         GTK_POLICY_NEVER, GTK_POLICY_AUTOMATIC);
@@ -58,22 +105,22 @@ GtkWidget *build_sidebar(ChatWidgets *w) {
 
     // Catégorie GÉNÉRAL
     gtk_box_pack_start(GTK_BOX(channels_box), build_category("GÉNÉRAL"), FALSE, FALSE, 0);
-    gtk_box_pack_start(GTK_BOX(channels_box), build_channel_button("# accueil", FALSE), FALSE, FALSE, 0);
-    gtk_box_pack_start(GTK_BOX(channels_box), build_channel_button("# général", TRUE), FALSE, FALSE, 0);
-    gtk_box_pack_start(GTK_BOX(channels_box), build_channel_button("# annonces", FALSE), FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(channels_box), build_channel_button("accueil", FALSE, w), FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(channels_box), build_channel_button("général", TRUE, w), FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(channels_box), build_channel_button("annonces", FALSE, w), FALSE, FALSE, 0);
 
     // Catégorie DÉVELOPPEMENT
     gtk_box_pack_start(GTK_BOX(channels_box), build_category("DÉVELOPPEMENT"), FALSE, FALSE, 0);
-    gtk_box_pack_start(GTK_BOX(channels_box), build_channel_button("# frontend", FALSE), FALSE, FALSE, 0);
-    gtk_box_pack_start(GTK_BOX(channels_box), build_channel_button("# backend", FALSE), FALSE, FALSE, 0);
-    gtk_box_pack_start(GTK_BOX(channels_box), build_channel_button("# code-review", FALSE), FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(channels_box), build_channel_button("frontend", FALSE, w), FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(channels_box), build_channel_button("backend", FALSE, w), FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(channels_box), build_channel_button("code-review", FALSE, w), FALSE, FALSE, 0);
 
     // Catégorie RESSOURCES
     gtk_box_pack_start(GTK_BOX(channels_box), build_category("RESSOURCES"), FALSE, FALSE, 0);
-    gtk_box_pack_start(GTK_BOX(channels_box), build_channel_button("# liens-utiles", FALSE), FALSE, FALSE, 0);
-    gtk_box_pack_start(GTK_BOX(channels_box), build_channel_button("# outils", FALSE), FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(channels_box), build_channel_button("liens-utiles", FALSE, w), FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(channels_box), build_channel_button("outils", FALSE, w), FALSE, FALSE, 0);
 
-    // Zone utilisateur en bas
+    // Zone utilisateur
     GtkWidget *user_area = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
     gtk_widget_set_name(user_area, "user-area");
     gtk_widget_set_margin_start(user_area, 8);

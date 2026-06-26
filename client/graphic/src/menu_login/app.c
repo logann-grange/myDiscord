@@ -2,6 +2,13 @@
 #include "../../include/menu_login/login.h"
 #include "../../include/menu_login/register.h"
 
+
+
+static void on_app_window_destroy(GtkWidget *widget, gpointer data) {
+    AppWidgets *w = (AppWidgets *)data;
+    g_free(w);
+}
+
 void show_main_window(GtkApplication *app) {
     AppWidgets *w = g_malloc(sizeof(AppWidgets));
      w->app = app;
@@ -27,10 +34,7 @@ void show_main_window(GtkApplication *app) {
     gtk_stack_set_visible_child_name(GTK_STACK(w->stack), "login");
 
     gtk_container_add(GTK_CONTAINER(w->window), w->stack);
+    g_signal_connect(w->window, "destroy", G_CALLBACK(on_app_window_destroy), w);
     gtk_widget_show_all(w->window);
-}
-
-static void on_app_window_destroy(GtkWidget *widget, gpointer data) {
-    AppWidgets *w = (AppWidgets *)data;
-    g_free(w);
+    
 }

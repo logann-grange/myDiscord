@@ -2,8 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 // #include "../include/channel.h"
-// #include "../include/user.h"
-// #include "../include/message.h"
+#include "../include/user.h"
+#include "../include/message.h"
 
 
 #ifdef _WIN32

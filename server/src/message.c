@@ -1,16 +1,15 @@
 #include "../include/message.h"
 
-char *createMessage(int id, int id_user, time_t date,char *text, char *reaction, char *status)
+char *createMessage(int id, int id_user, int idChannel, time_t date,char *text, char *reaction, char *status)
 {
     Message *msg = malloc(sizeof(Message));
     msg->id = id;
     msg->idUser = id_user;
+    msg->idChannel = idChannel;
     msg->date = date;
     msg->reaction = reaction;
     msg->status = status;
     msg->text = text;
-
-    // ajouter la requette sql
 
     return msg;
 }
@@ -29,20 +28,32 @@ void writeMessage(Message *message, char c) // ajoute un caractere au message
     message->status = "en cours";
 }
 
+int insertMessage(Message *message)
+{
+    char *fields[] = {"is_user", "date", "text", "status", "id_channel"};
+    char *params[] = {message->idUser, message->date, message->text, message->status, message->idChannel};
+
+    return bddInsert("message", fields, params, 5);
+}
+
 void editMessage(Message *message, char *new_message)
 {
     int new_len = strlen(*new_message);
     message->text = *new_message;
     message->status = "modifié";
 
-    // ajouter la fonction de la requette sql
+    char *fields[] = {"text"};
+    char *params[] = {message->text};
+    bddUpdate("message", fields, params, 1, message->id);
 }
 
 void deleteMessage(Message *message)
 {
-    message->status = "supprimer";
+    message->status = "supprimé";
 
-    // ajouter la requette sql update ou delete (selon si on veux suppr dans la bdd)
+    char *fields[] = {"status"};
+    char *params[] = {message->status};
+    bddUpdate("message", fields, params, 1, message->id);
 
     free(message);
 }
@@ -61,5 +72,5 @@ void addReaction(Message *message, char *reaction)
 
     new_reaction[len + strlen(*reaction)] = '\0';
     message->reaction = new_reaction;
-    // ajouter la raquette sql update
+    // ajouter la requette sql update
 }

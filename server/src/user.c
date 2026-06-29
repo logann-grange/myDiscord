@@ -19,15 +19,25 @@ User *createUser(int id, char *name, char *firstName, char *pseudo, char *email,
 void changeUserRank(User *user, char *rank)
 {
     user->rank = rank;
-    //ajouter la fonction de la requette sql
+    
+    char *fields[] = {"rank"};
+    char *params[] = {user->rank};
+    bddUpdate("user", fields, params, 1, user->id);
 }
 
 void changeUserStatus(User *user, char *status)
 {
     user->status = status;
+
+    char *fields[] = {"status"};
+    char *params[] = {user->status};
+    bddUpdate("user", fields, params, 1, user->id);
 }
 
 void changePseudo(User *user, char *pseudo)
 {
     user->pseudo = pseudo;
+    char *fields[] = {"pseudo"};
+    char *params[] = {user->pseudo};
+    bddUpdate("user", fields, params, 1, user->id);
 }

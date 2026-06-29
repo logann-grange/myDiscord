@@ -14,14 +14,17 @@ Channel *createChannel(int id, char* name, char *permission, int status)
 void changeChannelName(Channel *channel, char *name)
 {
     channel->name = name;
+
+    char *fields[] = {"name"};
+    char *params[] = {channel->name};
+    bddUpdate("channel", fields, params, 1, channel->id);
 }
 
 void changeChannelPermission(Channel *channel, char *permission)
 {
     channel->permission = permission;
-}
 
-void switchStatus(Channel *channel)
-{
-    channel->status = (channel->status == 0) ? 1 : 0;
+    char *fields[] = {"permission"};
+    char *params[] = {channel->permission};
+    bddUpdate("channel", fields, params, 1, channel->id);
 }

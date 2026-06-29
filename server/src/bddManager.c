@@ -14,8 +14,9 @@ PGconn *bddConnexion(void)
     return conn;
 }
 
-char ***bddSelect(PGconn *conn, char **fields, char **params, int size, int *out_nrows, int *out_ncols)
+char ***bddSelect(char **fields, char **params, int size, int *out_nrows, int *out_ncols)
 {
+    PGconn *conn = bddConnexion();
     const char *base = "SELECT * FROM \"user\" WHERE 1=1";
 
     char *sql = malloc(strlen(base) + 1);
@@ -92,8 +93,10 @@ char ***bddSelect(PGconn *conn, char **fields, char **params, int size, int *out
     return table;
 }
 
-int bddInsert(PGconn *conn, const char *tableName, char **fields, char **params, int size)
+int bddInsert(const char *tableName, char **fields, char **params, int size)
 {
+    PGconn *conn = bddConnexion();
+
     if (size <= 0) return 0;
 
     size_t cap = 32 + strlen(tableName);
@@ -143,6 +146,58 @@ int bddInsert(PGconn *conn, const char *tableName, char **fields, char **params,
     return ok;
 }
 
+int bddUpdate(const char *tableName, char **fields, char **params, int size, int id)
+{
+    PGconn *conn = bddConnexion();
+
+    if (size <= 0) return 0;
+
+    size_t cap = 32 + strlen(tableName);
+    char *sql = malloc(cap);
+    if (!sql) return 0;
+
+    int len = snprintf(sql, cap, "UPDATE %s SET ", tableName);
+
+    // Liste des champs à modifier : champ1 = $1, champ2 = $2, ...
+    for (int i = 0; i < size; i++)
+    {
+        int frag_len = snprintf(NULL, 0, "%s%s = $%d", i > 0 ? ", " : "", fields[i], i + 1);
+        char *tmp = realloc(sql, len + frag_len + 1);
+        if (!tmp) { free(sql); return 0; }
+        sql = tmp;
+        len += snprintf(sql + len, frag_len + 1, "%s%s = $%d", i > 0 ? ", " : "", fields[i], i + 1);
+    }
+
+    // Clause WHERE sur id (dernier paramètre : $size+1)
+    int where_len = snprintf(NULL, 0, " WHERE id = $%d", size + 1);
+    char *tmp2 = realloc(sql, len + where_len + 1);
+    if (!tmp2) { free(sql); return 0; }
+    sql = tmp2;
+    len += snprintf(sql + len, where_len + 1, " WHERE id = $%d", size + 1);
+
+    // Conversion de l'id en chaîne pour PQexecParams
+    char idStr[32];
+    snprintf(idStr, sizeof(idStr), "%d", id);
+
+    // On construit un tableau de paramètres = params[] + idStr à la fin
+    char **allParams = malloc((size + 1) * sizeof(char *));
+    if (!allParams) { free(sql); return 0; }
+    for (int i = 0; i < size; i++)
+        allParams[i] = params[i];
+    allParams[size] = idStr;
+
+    PGresult *res = PQexecParams(conn, sql, size + 1, NULL, (const char * const *)allParams, NULL, NULL, 0);
+
+    int ok = (PQresultStatus(res) == PGRES_COMMAND_OK);
+    if (!ok)
+        fprintf(stderr, "Mise à jour échouée: %s\n", PQerrorMessage(conn));
+
+    PQclear(res);
+    free(sql);
+    free(allParams);
+    return ok;
+}
+
 void bddFreeResult(char ***table, int nrows, int ncols)
 {
     if (!table) return;
@@ -159,7 +214,7 @@ int main() {
     char *fields[] = {"email", "nom", "prenom", "pseudo", "mot de passe", "statut", "role"};
     char *params[] = {"admin@discord.fr", "admin", "admin", "admin", "admin", "", "admin"};
 
-
     bddInsert(conn, "user", fields, params, 7);
+    
     return 0;
 }

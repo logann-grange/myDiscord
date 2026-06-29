@@ -1,6 +1,6 @@
 #include "../include/channel.h"
 
-Channel *createChannel(int id, char* name, char *permission, int status)
+Channel *createChannel(int id, char* name, char *permission, char *status)
 {
     Channel *channel = malloc(sizeof(Channel));
     channel->id = id;
@@ -26,5 +26,14 @@ void changeChannelPermission(Channel *channel, char *permission)
 
     char *fields[] = {"permission"};
     char *params[] = {channel->permission};
+    bddUpdate("channel", fields, params, 1, channel->id);
+}
+
+void deleteChannel(Channel *channel)
+{
+    channel->status = "supprimé";
+
+    char *fields[] = {"status"};
+    char *params[] = {channel->status};
     bddUpdate("channel", fields, params, 1, channel->id);
 }

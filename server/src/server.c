@@ -51,7 +51,7 @@ void broadcastMessage(const char *message, SOCKET excludeSocket) {
     for (int i = 0; i < MAX_CLIENTS; i++) {
         if (clients[i].active && clients[i].socket != excludeSocket) {
 
-            // Si le message vient d'un client (pas du serveur) que le destinataire est "Client3",
+            // Si le message vient d'un client et que le destinataire est "Client3",
             // on ne lui envoie rien.
             if (excludeSocket != INVALID_SOCKET && strcmp(clients[i].pseudo, "Client3") == 0) {
                 continue;

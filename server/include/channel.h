@@ -12,10 +12,10 @@ typedef struct {
     int status; // notification
 } Channel;
 
-Channel *createChannel(int id, char* name, char *permission, int status, User **ListUser);
+Channel *createChannel(int id, char* name, char *permission, char *status, User **ListUser);
 
 void changeChannelName(Channel *channel, char *name);
 
 void changeChannelPermission(Channel *channel, char *permission);
 
-void switchStatus(Channel *channel);
+void deleteChannel(Channel *channel);

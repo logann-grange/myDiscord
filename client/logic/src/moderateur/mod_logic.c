@@ -9,15 +9,15 @@ ModResult kick_user(const char *pseudo_cible, UserRole role_executeur,UserRole r
 
     }
 
-    //todo: send kick request to server
+    network_send_kick(pseudo_cible);
     return MOD_OK;
 }
 
-ModResult delete_message(const char *message_id, UserRole role_executeur,UserRole role_cible) {
+ModResult delete_message(int message_id, UserRole role_executeur,UserRole role_cible) {
     if (role_executeur < ROLE_MODERATEUR)
         return MOD_ERREUR_PERMISSION;
 
-    //todo: send delete message request to server
+    network_send_delete_message(message_id);
     return MOD_OK;
 }
 
@@ -26,7 +26,7 @@ ModResult timeout_user(const char *pseudo_cible, int duree, UserRole role_execut
         return MOD_ERREUR_PERMISSION;
     if (strlen(pseudo_cible) == 0)
         return MOD_ERREUR_CIBLE_INVALIDE;
-    //todo: send timeout request to server
+    network_send_timeout(pseudo_cible, duree);
     return MOD_OK;
 }
     

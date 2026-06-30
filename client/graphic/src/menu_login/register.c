@@ -23,7 +23,8 @@ static void on_register_clicked(GtkButton *btn, gpointer data) {
         case REGISTER_OK:
             hash_password(password);
             g_print("Register: %s %s / %s / %s\n", prenom, nom, pseudo, email);
-            // TODO: envoyer au serveur
+            network_send_register(nom, prenom, pseudo,
+                            email, password,"salt_factice");//TODO: sel généré aléatoirement
             return;
     }
 

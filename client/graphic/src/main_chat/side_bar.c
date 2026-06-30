@@ -39,10 +39,10 @@ static void on_channel_clicked(GtkButton *btn, gpointer data) {
     }
     g_list_free(children);
 
-    // TODO: charger les vrais messages du canal depuis le serveur
+    network_request_channel_history(cd->channel_name);
     // Pour l'instant message par défaut
-    GtkWidget *msg = build_message("Système", "00:00",
-        "Bienvenue dans ce canal !", 'S');
+    GtkWidget *msg = build_message(0, "Système", "00:00",
+    "Bienvenue dans ce canal !", 'S');
     gtk_box_pack_start(GTK_BOX(w->messages_box), msg, FALSE, FALSE, 0);
     gtk_widget_show_all(w->messages_box);
 

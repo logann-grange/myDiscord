@@ -2,7 +2,9 @@
 #define CHAT_PAGE_H
 
 #include "../menu_login/app.h"
+#include "../../logic/include/network/network_client.h"
 
 GtkWidget *build_chat_page(AppWidgets *w);
+void chat_start_network_listening(AppWidgets *w);
 
 #endif

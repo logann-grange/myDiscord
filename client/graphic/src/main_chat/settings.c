@@ -17,6 +17,7 @@ static void on_save_pseudo_clicked(GtkButton *btn, gpointer data) {
     strncpy(w->pseudo, new_pseudo, sizeof(w->pseudo) - 1);
     g_print("Pseudo changé : %s\n", w->pseudo);
     // TODO: envoyer au serveur
+    network_send_update_pseudo(new_pseudo);
 
     // Retour au chat
     gtk_stack_set_visible_child_name(GTK_STACK(w->stack), "chat");

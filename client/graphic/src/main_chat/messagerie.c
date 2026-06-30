@@ -2,13 +2,13 @@
 #include <string.h>
 #include <stdio.h>
 
-// Réactions disponibles
 static const char *reactions[] = {"👍", "❤️", "😂", "😮", "😢", "🔥"};
 static const int nb_reactions = 6;
 
 typedef struct {
     GtkWidget *reactions_box;
     const char *emoji;
+    int message_id;
 } ReactionData;
 
 static void on_reaction_data_free(gpointer data, GClosure *closure) {
@@ -26,17 +26,17 @@ static void on_reaction_clicked(GtkButton *btn, gpointer data) {
     gtk_box_pack_start(GTK_BOX(rd->reactions_box), reaction_btn, FALSE, FALSE, 0);
     gtk_widget_show(reaction_btn);
 
-    printf("Réaction ajoutée : %s\n", rd->emoji);
-    // TODO: envoyer la réaction au serveur
+    printf("Réaction ajoutée sur message %d : %s\n", rd->message_id, rd->emoji);
+    network_send_reaction(rd->message_id, rd->emoji);
 }
 
 static void on_send_clicked(GtkButton *btn, gpointer data) {
-    GtkEntry *entry = GTK_ENTRY(data);
-    const char *text = gtk_entry_get_text(entry);
+    AppWidgets *w = (AppWidgets *)data;
+    const char *text = gtk_entry_get_text(GTK_ENTRY(w->input_entry));
     if (strlen(text) == 0) return;
-    printf("Message envoyé : %s\n", text);
-    gtk_entry_set_text(entry, "");
-    // TODO: envoyer au serveur
+    printf("Message envoyé dans #%s : %s\n", w->current_channel, text);
+    gtk_entry_set_text(GTK_ENTRY(w->input_entry), "");
+    TODO: network_send_message(w->current_channel, text);
 }
 
 static void on_entry_activate(GtkEntry *entry, gpointer data) {
@@ -48,7 +48,7 @@ static void on_react_btn_clicked(GtkButton *btn, gpointer data) {
     gtk_widget_show_all(popover);
 }
 
-GtkWidget *build_message(const char *auteur, const char *heure, const char *texte, const char avatar_lettre) {
+GtkWidget *build_message(int message_id, const char *auteur, const char *heure, const char *texte, const char avatar_lettre) {
     GtkWidget *msg_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10);
     gtk_widget_set_name(msg_box, "message-box");
     gtk_widget_set_margin_top(msg_box, 6);
@@ -102,6 +102,7 @@ GtkWidget *build_message(const char *auteur, const char *heure, const char *text
         ReactionData *rd = g_malloc(sizeof(ReactionData));
         rd->emoji = reactions[i];
         rd->reactions_box = reactions_box;
+        rd->message_id = message_id;
 
         g_signal_connect_data(emoji_btn, "clicked",
             G_CALLBACK(on_reaction_clicked),
@@ -118,6 +119,19 @@ GtkWidget *build_message(const char *auteur, const char *heure, const char *text
     gtk_box_pack_start(GTK_BOX(reactions_box), react_btn, FALSE, FALSE, 0);
 
     return msg_box;
+}
+
+gboolean display_incoming_message(gpointer data) {
+    IncomingMessageData *msg = (IncomingMessageData *)data;
+
+    if (strcmp(msg->w->current_channel, msg->channel) == 0) {
+        GtkWidget *new_msg = build_message(msg->message_id, msg->auteur, msg->date, msg->texte, msg->auteur[0]);
+        gtk_box_pack_start(GTK_BOX(msg->w->messages_box), new_msg, FALSE, FALSE, 0);
+        gtk_widget_show_all(new_msg);
+    }
+
+    g_free(msg);
+    return FALSE;
 }
 
 GtkWidget *build_messagerie(AppWidgets *w) {
@@ -155,15 +169,15 @@ GtkWidget *build_messagerie(AppWidgets *w) {
     gtk_widget_set_name(w->messages_box, "messages-box");
     gtk_container_add(GTK_CONTAINER(scroll), w->messages_box);
 
-    // Messages de test
+    // Messages de test (id factices en attendant le serveur)
     gtk_box_pack_start(GTK_BOX(w->messages_box),
-        build_message("clara_dev", "19:31", "Salut tout le monde !", 'C'),
+        build_message(1, "clara_dev", "19:31", "Salut tout le monde !", 'C'),
         FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(w->messages_box),
-        build_message("theo.js", "19:32", "Ouais, super conférence !", 'T'),
+        build_message(2, "theo.js", "19:32", "Ouais, super conférence !", 'T'),
         FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(w->messages_box),
-        build_message("naomi_ux", "20:01", "Y'a un replay quelque part ?", 'N'),
+        build_message(3, "naomi_ux", "20:01", "Y'a un replay quelque part ?", 'N'),
         FALSE, FALSE, 0);
 
     gtk_box_pack_start(GTK_BOX(main_box), gtk_separator_new(GTK_ORIENTATION_HORIZONTAL), FALSE, FALSE, 0);
@@ -189,9 +203,9 @@ GtkWidget *build_messagerie(AppWidgets *w) {
 
     GtkWidget *btn_send = gtk_button_new_with_label("➤");
     gtk_widget_set_name(btn_send, "input-send");
-    g_signal_connect(btn_send, "clicked", G_CALLBACK(on_send_clicked), w->input_entry);
-    g_signal_connect(w->input_entry, "activate", G_CALLBACK(on_entry_activate), btn_send);
-    gtk_box_pack_start(GTK_BOX(input_box), btn_send, FALSE, FALSE, 0);
+    g_signal_connect(btn_send, "clicked", G_CALLBACK(on_send_clicked), w);
+    g_signal_connect(w->input_entry, "activate", G_CALLBACK(on_entry_activate), w);
+    gtk_box_pack_start(GTK_BOX(input_box), btn_send, FALSE, FALSE, 0);;
 
     GtkWidget *btn_emoji = gtk_button_new_with_label("😊");
     gtk_widget_set_name(btn_emoji, "input-emoji");

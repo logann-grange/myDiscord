@@ -1,5 +1,6 @@
 #include "../../include/menu_login/login.h"
 #include "menu_login/login_logic.h"
+#include "../../include/main_chat/chat_page.h"
 
 
 static void on_login_clicked(GtkButton *btn, gpointer data) {
@@ -22,8 +23,9 @@ static void on_login_clicked(GtkButton *btn, gpointer data) {
             hash_password_with_salt(password, fake_salt, hash_hex);
             printf("Hash login (test): %s\n", hash_hex);
             // TODO: vrai sel reçu du serveur
+            network_send_login(pseudo, hash_hex);
+            chat_start_network_listening(w);
             gtk_stack_set_visible_child_name(GTK_STACK(w->stack), "chat");
-            // TODO: envoyer au serveur
             return;
         }
     }

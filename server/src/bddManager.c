@@ -14,14 +14,14 @@ PGconn *bddConnexion(void)
     return conn;
 }
 
-char ***bddSelect(char **fields, char **params, int size, int *out_nrows, int *out_ncols)
+char ***bddSelect(const char *tableName, char **fields, char **params, int size, int *out_nrows, int *out_ncols)
 {
     PGconn *conn = bddConnexion();
-    const char *base = "SELECT * FROM \"user\" WHERE 1=1";
 
-    char *sql = malloc(strlen(base) + 1);
+    int base_len = snprintf(NULL, 0, "SELECT * FROM \"%s\" WHERE 1=1", tableName);
+    char *sql = malloc(base_len + 1);
     if (!sql) return NULL;
-    strcpy(sql, base);
+    snprintf(sql, base_len + 1, "SELECT * FROM \"%s\" WHERE 1=1", tableName);
 
     for (int i = 0; i < size; i++)
     {
@@ -61,7 +61,6 @@ char ***bddSelect(char **fields, char **params, int size, int *out_nrows, int *o
         table[i] = malloc(ncols * sizeof(char *));
         if (!table[i])
         {
-            // libération de ce qui a déjà été alloué avant de sortir
             for (int k = 0; k < i; k++)
             {
                 for (int j = 0; j < ncols; j++) free(table[k][j]);
@@ -81,7 +80,7 @@ char ***bddSelect(char **fields, char **params, int size, int *out_nrows, int *o
             else
             {
                 const char *val = PQgetvalue(res, i, j);
-                table[i][j] = strdup(val); // copie car PGresult va être libéré
+                table[i][j] = strdup(val);
             }
         }
     }

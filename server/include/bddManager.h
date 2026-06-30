@@ -5,7 +5,7 @@
 
 PGconn *bddConnexion();
 
-char ***bddSelect(char **fields, char **params, int size, int *out_nrows, int *out_ncols);
+char ***bddSelect(const char *tableName, char **fields, char **params, int size, int *out_nrows, int *out_ncols);
 
 int bddInsert(const char *tableName, char **fields, char **params, int size);
 

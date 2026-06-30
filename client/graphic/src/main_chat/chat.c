@@ -11,6 +11,10 @@ static void on_chat_window_destroy(GtkWidget *widget, gpointer data) {
 void show_chat_window(GtkApplication *app) {
     ChatWidgets *w = g_malloc(sizeof(ChatWidgets));
 
+    //TODO: récupérer le rôle et le pseudo de l'utilisateur connecté
+    w->role = ROLE_ADMINISTRATEUR   ;
+    strncpy(w->pseudo, "moi", sizeof(w->pseudo) - 1);
+
     // CSS
     GtkCssProvider *provider = gtk_css_provider_new();
     gtk_css_provider_load_from_path(provider, "./client/graphic/src/style/style_chat.css", NULL);

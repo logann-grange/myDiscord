@@ -4,7 +4,7 @@
 #include "../../graphic/include/main_chat/chat.h"
 
 typedef enum {
-    ADMIN_LOGIN_OK,
+    ADMIN_OK,
     ADMIN_ERREUR_PERMISSION,
     ADMIN_ERREUR_CIBLE_INVALIDE,
 

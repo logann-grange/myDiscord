@@ -2,6 +2,7 @@
 #define CHAT_H
 
 #include <gtk/gtk.h>
+#include <string.h>
 
 typedef enum{
 ROLE_UTILISATEUR,
@@ -17,7 +18,8 @@ typedef struct {
     GtkWidget *chat_area;
     GtkWidget *chan_name_label;    
     GtkWidget *messages_box;       
-    GtkWidget *input_entry;        
+    GtkWidget *input_entry;
+    GtkWidget *panel_popover;         
     char current_channel[64];
     UserRole role;
     char pseudo[64];

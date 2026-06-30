@@ -1,6 +1,13 @@
 #include "../../include/main_chat/side_bar.h"
 #include "../../include/main_chat/messagerie.h"
+#include "../../include/moderateur/mod_panel.h"
+#include "../../include/moderateur/admin_panel.h"
 
+
+static void on_mod_admin_btn_clicked(GtkButton *btn, gpointer data) {
+    ChatWidgets *w = (ChatWidgets *)data;
+    gtk_widget_show_all(w->panel_popover);
+}
 
 static void on_channel_data_free(gpointer data, GClosure *closure) {
     g_free(data);
@@ -142,6 +149,22 @@ GtkWidget *build_sidebar(ChatWidgets *w) {
     gtk_box_pack_start(GTK_BOX(user_info), username, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(user_info), status, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(user_area), user_info, TRUE, TRUE, 0);
+
+     if (w->role == ROLE_MODERATEUR || w->role == ROLE_ADMINISTRATEUR) {
+        GtkWidget *mod_admin_btn = gtk_button_new_with_label("🛡");
+        gtk_widget_set_name(mod_admin_btn, "mod-admin-btn");
+
+        w->panel_popover = gtk_popover_new(mod_admin_btn);
+        GtkWidget *panel = (w->role == ROLE_ADMINISTRATEUR) 
+            ? build_admin_panel(w) 
+            : build_mod_panel(w);
+        gtk_container_add(GTK_CONTAINER(w->panel_popover), panel);
+
+        g_signal_connect(mod_admin_btn, "clicked",
+            G_CALLBACK(on_mod_admin_btn_clicked), w);
+
+        gtk_box_pack_start(GTK_BOX(user_area), mod_admin_btn, FALSE, FALSE, 0);
+    }
 
     GtkWidget *settings_btn = gtk_button_new_with_label("⚙");
     gtk_widget_set_name(settings_btn, "settings-btn");

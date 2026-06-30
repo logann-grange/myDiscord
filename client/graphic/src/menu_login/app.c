@@ -1,6 +1,8 @@
 #include "../../include/menu_login/app.h"
 #include "../../include/menu_login/login.h"
 #include "../../include/menu_login/register.h"
+#include "../../include/main_chat/chat_page.h"
+#include "../../include/main_chat/settings.h"
 
 
 
@@ -31,6 +33,8 @@ void show_main_window(GtkApplication *app) {
 
     gtk_stack_add_named(GTK_STACK(w->stack), build_login_page(w), "login");
     gtk_stack_add_named(GTK_STACK(w->stack), build_register_page(w), "register");
+    gtk_stack_add_named(GTK_STACK(w->stack), build_chat_page(w), "chat");
+    gtk_stack_add_named(GTK_STACK(w->stack), build_settings_page(w), "settings");
     gtk_stack_set_visible_child_name(GTK_STACK(w->stack), "login");
 
     gtk_container_add(GTK_CONTAINER(w->window), w->stack);

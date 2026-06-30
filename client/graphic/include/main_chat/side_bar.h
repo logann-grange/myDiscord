@@ -3,12 +3,13 @@
 
 
 #include <string.h>
-#include "chat.h"
+#include "../menu_login/app.h"
 
 typedef struct {
-    ChatWidgets *w;
+    AppWidgets *w;
     char channel_name[64];
 } ChannelData;
 
-GtkWidget *build_sidebar(ChatWidgets *w);
+GtkWidget *build_sidebar(AppWidgets *w);
+
 #endif

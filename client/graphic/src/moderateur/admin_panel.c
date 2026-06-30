@@ -5,7 +5,7 @@
 #include <stdio.h>
 
 typedef struct {
-    ChatWidgets *w;
+    AppWidgets *w;
     GtkWidget *entry_canal;
     GtkWidget *entry_pseudo;
     GtkWidget *combo_role;
@@ -80,7 +80,7 @@ static void on_set_role_clicked(GtkButton *btn, gpointer data) {
     g_signal_connect(dialog, "response", G_CALLBACK(gtk_widget_destroy), NULL);
 }
 
-GtkWidget *build_admin_panel(ChatWidgets *w) {
+GtkWidget *build_admin_panel(AppWidgets *w) {
     AdminPanelData *d = g_malloc(sizeof(AdminPanelData));
     d->w = w;
 
@@ -91,7 +91,6 @@ GtkWidget *build_admin_panel(ChatWidgets *w) {
     gtk_widget_set_margin_top(panel, 8);
     gtk_widget_set_margin_bottom(panel, 8);
 
-    // Titre
     GtkWidget *title = gtk_label_new("ADMINISTRATION");
     gtk_widget_set_name(title, "panel-title");
     gtk_widget_set_halign(title, GTK_ALIGN_START);
@@ -100,7 +99,6 @@ GtkWidget *build_admin_panel(ChatWidgets *w) {
     gtk_box_pack_start(GTK_BOX(panel),
         gtk_separator_new(GTK_ORIENTATION_HORIZONTAL), FALSE, FALSE, 4);
 
-    // ── Section canaux ──
     GtkWidget *lbl_canaux = gtk_label_new("CANAUX");
     gtk_widget_set_name(lbl_canaux, "panel-section");
     gtk_widget_set_halign(lbl_canaux, GTK_ALIGN_START);
@@ -125,7 +123,6 @@ GtkWidget *build_admin_panel(ChatWidgets *w) {
     gtk_box_pack_start(GTK_BOX(panel),
         gtk_separator_new(GTK_ORIENTATION_HORIZONTAL), FALSE, FALSE, 4);
 
-    // ── Section rôles ──
     GtkWidget *lbl_roles = gtk_label_new("RÔLES");
     gtk_widget_set_name(lbl_roles, "panel-section");
     gtk_widget_set_halign(lbl_roles, GTK_ALIGN_START);

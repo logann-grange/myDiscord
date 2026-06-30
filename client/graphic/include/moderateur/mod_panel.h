@@ -3,15 +3,15 @@
 
 #include <string.h>
 #include <stdio.h>
-#include "../main_chat/chat.h"
+#include "../menu_login/app.h"
 #include "../../../logic/include/moderateur/mod_logic.h"
 
 typedef struct {
-    ChatWidgets *w;
+    AppWidgets *w;
     GtkWidget *entry_pseudo;
     GtkWidget *entry_timeout;
 } ModPanelData;
 
-GtkWidget *build_mod_panel(ChatWidgets *w);
+GtkWidget *build_mod_panel(AppWidgets *w);
 
 #endif

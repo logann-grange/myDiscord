@@ -1,6 +1,7 @@
 #include "../../include/menu_login/login.h"
 #include "menu_login/login_logic.h"
 
+
 static void on_login_clicked(GtkButton *btn, gpointer data) {
     AppWidgets *w = (AppWidgets *)data;
     const char *pseudo   = gtk_entry_get_text(GTK_ENTRY(w->entry_login_pseudo));
@@ -13,19 +14,18 @@ static void on_login_clicked(GtkButton *btn, gpointer data) {
             message = "Veuillez remplir tous les champs."; break;
         case LOGIN_PASSWORD_TROP_COURT:
             message = "Le mot de passe doit contenir au moins 6 caractères."; break;
-        case LOGIN_OK:
+        case LOGIN_OK: {
             g_print("Login: %s\n", pseudo);
-              // Temporaire : sel fictif pour tester le hachage
+            // Temporaire : sel fictif pour tester le hachage
             unsigned char fake_salt[SALT_LEN] = {0};
             char hash_hex[HASH_LEN * 2 + 1];
             hash_password_with_salt(password, fake_salt, hash_hex);
             printf("Hash login (test): %s\n", hash_hex);
             // TODO: vrai sel reçu du serveur
-            gtk_widget_hide(w->window);
-            show_chat_window(w->app);
-            g_free(w);
+            gtk_stack_set_visible_child_name(GTK_STACK(w->stack), "chat");
             // TODO: envoyer au serveur
             return;
+        }
     }
 
     GtkWidget *dialog = gtk_message_dialog_new(GTK_WINDOW(w->window),

@@ -2,36 +2,37 @@
 #include "../../include/main_chat/messagerie.h"
 #include "../../include/moderateur/mod_panel.h"
 #include "../../include/moderateur/admin_panel.h"
-
+#include <string.h>
+#include <stdio.h>
 
 static void on_mod_admin_btn_clicked(GtkButton *btn, gpointer data) {
-    ChatWidgets *w = (ChatWidgets *)data;
+    AppWidgets *w = (AppWidgets *)data;
     gtk_widget_show_all(w->panel_popover);
+}
+
+static void on_settings_btn_clicked(GtkButton *btn, gpointer data) {
+    AppWidgets *w = (AppWidgets *)data;
+    gtk_stack_set_visible_child_name(GTK_STACK(w->stack), "settings");
 }
 
 static void on_channel_data_free(gpointer data, GClosure *closure) {
     g_free(data);
 }
 
-
 static void on_channel_clicked(GtkButton *btn, gpointer data) {
     ChannelData *cd = (ChannelData *)data;
-    ChatWidgets *w = cd->w;
+    AppWidgets *w = cd->w;
 
-    // Met à jour le canal actif
     strncpy(w->current_channel, cd->channel_name, sizeof(w->current_channel) - 1);
 
-    // Met à jour le header
     char header[72];
     snprintf(header, sizeof(header), "# %s", cd->channel_name);
     gtk_label_set_text(GTK_LABEL(w->chan_name_label), header);
 
-    // Met à jour la barre d'envoi
     char placeholder[80];
     snprintf(placeholder, sizeof(placeholder), "Écrire dans #%s...", cd->channel_name);
     gtk_entry_set_placeholder_text(GTK_ENTRY(w->input_entry), placeholder);
 
-    // Vide et rafraîchit les messages
     GList *children = gtk_container_get_children(GTK_CONTAINER(w->messages_box));
     for (GList *l = children; l != NULL; l = l->next) {
         gtk_widget_destroy(GTK_WIDGET(l->data));
@@ -48,7 +49,7 @@ static void on_channel_clicked(GtkButton *btn, gpointer data) {
     g_print("Canal changé : %s\n", cd->channel_name);
 }
 
-static GtkWidget *build_channel_button(const char *name, gboolean active, ChatWidgets *w) {
+static GtkWidget *build_channel_button(const char *name, gboolean active, AppWidgets *w) {
     char label[72];
     snprintf(label, sizeof(label), "# %s", name);
 
@@ -78,13 +79,11 @@ static GtkWidget *build_category(const char *name) {
     return label;
 }
 
-
-GtkWidget *build_sidebar(ChatWidgets *w) {
+GtkWidget *build_sidebar(AppWidgets *w) {
     GtkWidget *sidebar = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
     gtk_widget_set_name(sidebar, "sidebar");
     gtk_widget_set_size_request(sidebar, 240, -1);
 
-    // Header serveur
     GtkWidget *server_header = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
     gtk_widget_set_name(server_header, "server-header");
 
@@ -99,7 +98,6 @@ GtkWidget *build_sidebar(ChatWidgets *w) {
 
     gtk_box_pack_start(GTK_BOX(sidebar), gtk_separator_new(GTK_ORIENTATION_HORIZONTAL), FALSE, FALSE, 0);
 
-    // Zone scrollable
     GtkWidget *scroll = gtk_scrolled_window_new(NULL, NULL);
     gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scroll),
         GTK_POLICY_NEVER, GTK_POLICY_AUTOMATIC);
@@ -110,24 +108,20 @@ GtkWidget *build_sidebar(ChatWidgets *w) {
     gtk_widget_set_margin_end(channels_box, 8);
     gtk_container_add(GTK_CONTAINER(scroll), channels_box);
 
-    // Catégorie GÉNÉRAL
     gtk_box_pack_start(GTK_BOX(channels_box), build_category("GÉNÉRAL"), FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(channels_box), build_channel_button("accueil", FALSE, w), FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(channels_box), build_channel_button("général", TRUE, w), FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(channels_box), build_channel_button("annonces", FALSE, w), FALSE, FALSE, 0);
 
-    // Catégorie DÉVELOPPEMENT
     gtk_box_pack_start(GTK_BOX(channels_box), build_category("DÉVELOPPEMENT"), FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(channels_box), build_channel_button("frontend", FALSE, w), FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(channels_box), build_channel_button("backend", FALSE, w), FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(channels_box), build_channel_button("code-review", FALSE, w), FALSE, FALSE, 0);
 
-    // Catégorie RESSOURCES
     gtk_box_pack_start(GTK_BOX(channels_box), build_category("RESSOURCES"), FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(channels_box), build_channel_button("liens-utiles", FALSE, w), FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(channels_box), build_channel_button("outils", FALSE, w), FALSE, FALSE, 0);
 
-    // Zone utilisateur
     GtkWidget *user_area = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
     gtk_widget_set_name(user_area, "user-area");
     gtk_widget_set_margin_start(user_area, 8);
@@ -140,7 +134,7 @@ GtkWidget *build_sidebar(ChatWidgets *w) {
     gtk_box_pack_start(GTK_BOX(user_area), avatar, FALSE, FALSE, 0);
 
     GtkWidget *user_info = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
-    GtkWidget *username = gtk_label_new("moi");
+    GtkWidget *username = gtk_label_new(w->pseudo);
     gtk_widget_set_name(username, "username");
     gtk_widget_set_halign(username, GTK_ALIGN_START);
     GtkWidget *status = gtk_label_new("en ligne");
@@ -150,13 +144,13 @@ GtkWidget *build_sidebar(ChatWidgets *w) {
     gtk_box_pack_start(GTK_BOX(user_info), status, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(user_area), user_info, TRUE, TRUE, 0);
 
-     if (w->role == ROLE_MODERATEUR || w->role == ROLE_ADMINISTRATEUR) {
+    if (w->role == ROLE_MODERATEUR || w->role == ROLE_ADMINISTRATEUR) {
         GtkWidget *mod_admin_btn = gtk_button_new_with_label("🛡");
         gtk_widget_set_name(mod_admin_btn, "mod-admin-btn");
 
         w->panel_popover = gtk_popover_new(mod_admin_btn);
-        GtkWidget *panel = (w->role == ROLE_ADMINISTRATEUR) 
-            ? build_admin_panel(w) 
+        GtkWidget *panel = (w->role == ROLE_ADMINISTRATEUR)
+            ? build_admin_panel(w)
             : build_mod_panel(w);
         gtk_container_add(GTK_CONTAINER(w->panel_popover), panel);
 
@@ -168,6 +162,7 @@ GtkWidget *build_sidebar(ChatWidgets *w) {
 
     GtkWidget *settings_btn = gtk_button_new_with_label("⚙");
     gtk_widget_set_name(settings_btn, "settings-btn");
+    g_signal_connect(settings_btn, "clicked", G_CALLBACK(on_settings_btn_clicked), w);
     gtk_box_pack_start(GTK_BOX(user_area), settings_btn, FALSE, FALSE, 0);
 
     gtk_box_pack_start(GTK_BOX(sidebar), gtk_separator_new(GTK_ORIENTATION_HORIZONTAL), FALSE, FALSE, 0);

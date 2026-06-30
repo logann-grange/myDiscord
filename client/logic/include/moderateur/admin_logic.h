@@ -1,7 +1,7 @@
 #ifndef ADMIN_LOGIC_H
 #define ADMIN_LOGIC_H
 
-#include "../../graphic/include/main_chat/chat.h"
+#include "../../graphic/include/menu_login/app.h"
 
 typedef enum {
     ADMIN_OK,

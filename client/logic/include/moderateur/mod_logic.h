@@ -1,7 +1,7 @@
 #ifndef MOD_LOGIC_H
 #define MOD_LOGIC_H
 
-#include "../../graphic/include/main_chat/chat.h"
+#include "../../graphic/include/menu_login/app.h"
 typedef enum {
     MOD_OK,
     MOD_ERREUR_PERMISSION,

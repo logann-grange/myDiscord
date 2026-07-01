@@ -208,12 +208,12 @@ void bddFreeResult(char ***table, int nrows, int ncols)
     free(table);
 }
 
-int main() {
-    PGconn *conn = bddConnexion();
-    char *fields[] = {"email", "nom", "prenom", "pseudo", "mot de passe", "statut", "role"};
-    char *params[] = {"admin@discord.fr", "admin", "admin", "admin", "admin", "", "admin"};
+// int main() {
+//     PGconn *conn = bddConnexion();
+//     char *fields[] = {"email", "nom", "prenom", "pseudo", "mot de passe", "statut", "role"};
+//     char *params[] = {"admin@discord.fr", "admin", "admin", "admin", "admin", "", "admin"};
 
-    bddInsert(conn, "user", fields, params, 7);
+//     bddInsert(conn, "user", fields, params, 7);
     
-    return 0;
-}
+//     return 0;
+// }

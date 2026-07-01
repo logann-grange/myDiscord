@@ -2,10 +2,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
-// #include "../include/channel.h"
 #include "../include/user.h"
 #include "../include/message.h"
-
+#include "../include/login.h"
+#include "protocol.h"
+#include "net_utils.h"
 
 #ifdef _WIN32
     #include <winsock2.h>
@@ -36,9 +37,18 @@
 #define MAX_CLIENTS 10
 #define PORT 8080
 
+// Doivent correspondre à ce qu'utilisent login_logic.h / register_logic.h
+#ifndef SALT_LEN
+#define SALT_LEN 16
+#endif
+#ifndef HASH_LEN
+#define HASH_LEN 32
+#endif
+
 typedef struct {
     SOCKET socket;
     int active;
+    int loggedIn;
     char pseudo[32];
 } Client;
 
@@ -47,31 +57,9 @@ SOCKET listenSocket;
 volatile int running = 1;
 
 
-// Envoie une seule chaine : longueur (4 octets, network order) + contenu
-static int sendString(SOCKET sock, const char *str) {
-    uint32_t len = str ? (uint32_t)strlen(str) : 0;
-    uint32_t netLen = htonl(len);
-
-    // Envoi de la longueur
-    int sent = 0;
-    const char *lenData = (const char*)&netLen;
-    while (sent < (int)sizeof(netLen)) {
-        int n = send(sock, lenData + sent, sizeof(netLen) - sent, 0);
-        if (n <= 0) return -1;
-        sent += n;
-    }
-
-    // Envoi du contenu (si non vide)
-    sent = 0;
-    while (str && sent < (int)len) {
-        int n = send(sock, str + sent, len - sent, 0);
-        if (n <= 0) return -1;
-        sent += n;
-    }
-    return 0;
-}
-
-// Envoie la struct User entiere a un client
+// ---------------------------------------------------------------------
+// Envoie la struct User entiere a un client (inchange)
+// ---------------------------------------------------------------------
 int sendUser(SOCKET sock, User user) {
     uint32_t netId = htonl((uint32_t)user.id);
 
@@ -95,15 +83,15 @@ int sendUser(SOCKET sock, User user) {
     return 0;
 }
 
-// Envoie un message a tous les clients actifs
+// ---------------------------------------------------------------------
+// Envoie un message a tous les clients actifs et loggues
+// ---------------------------------------------------------------------
 void broadcastMessage(const char *message, SOCKET excludeSocket)
 {
     LOCK();
     for (int i = 0; i < MAX_CLIENTS; i++) {
-        if (clients[i].active && clients[i].socket != excludeSocket) {
+        if (clients[i].active && clients[i].loggedIn && clients[i].socket != excludeSocket) {
 
-            // Si le message vient d'un client et que le destinataire est "Client3",
-            // on ne lui envoie rien.
             if (excludeSocket != INVALID_SOCKET && strcmp(clients[i].pseudo, "Client3") == 0) {
                 continue;
             }
@@ -114,11 +102,113 @@ void broadcastMessage(const char *message, SOCKET excludeSocket)
     UNLOCK();
 }
 
-// Thread dedie a un client : recoit ses messages et les diffuse aux autres
+// ---------------------------------------------------------------------
+// Phase d'authentification : traite salt-request / login / register
+// jusqu'a connexion reussie (ou deconnexion du client)
+// Retourne 0 si le client est authentifie et pret pour le chat, -1 sinon
+// ---------------------------------------------------------------------
+static int handleAuthPhase(int index) {
+    SOCKET sock = clients[index].socket;
+    MessageType type;
+
+    while (running) {
+        if (recvType(sock, &type) < 0) return -1;
+
+        if (type == MSG_LOGIN_SALT_REQUEST) {
+            char pseudo[64];
+            if (recvString(sock, pseudo, sizeof(pseudo)) < 0) return -1;
+
+            char stored[256] = "";
+            char salt_hex[SALT_LEN * 2 + 1] = "";
+            if (getStoredPassword(pseudo, stored, sizeof(stored)) == 0 &&
+                strlen(stored) >= (size_t)(SALT_LEN * 2)) {
+                memcpy(salt_hex, stored, SALT_LEN * 2);
+                salt_hex[SALT_LEN * 2] = '\0';
+            }
+            // salt_hex reste vide si le pseudo n'existe pas
+
+            sendType(sock, MSG_LOGIN_SALT_RESPONSE);
+            sendString(sock, salt_hex);
+            continue;
+        }
+
+        if (type == MSG_LOGIN_REQUEST) {
+            char pseudo[64], hash[HASH_LEN * 2 + 1];
+            if (recvString(sock, pseudo, sizeof(pseudo)) < 0) return -1;
+            if (recvString(sock, hash, sizeof(hash)) < 0) return -1;
+
+            User *u = login(pseudo, hash, "127.0.0.1");
+
+            sendType(sock, MSG_LOGIN_RESPONSE);
+            if (u) {
+                sendString(sock, "OK");
+                LOCK();
+                strncpy(clients[index].pseudo, pseudo, sizeof(clients[index].pseudo) - 1);
+                clients[index].pseudo[sizeof(clients[index].pseudo) - 1] = '\0';
+                clients[index].loggedIn = 1;
+                UNLOCK();
+                freeUser(u);
+                return 0; // authentifie, on passe au chat
+            } else {
+                sendString(sock, "Pseudo ou mot de passe incorrect.");
+            }
+            continue;
+        }
+
+        if (type == MSG_REGISTER_REQUEST) {
+            char nom[64], prenom[64], pseudo[64], email[128];
+            char salt_hex[SALT_LEN * 2 + 1], hash_hex[HASH_LEN * 2 + 1];
+
+            if (recvString(sock, nom, sizeof(nom)) < 0) return -1;
+            if (recvString(sock, prenom, sizeof(prenom)) < 0) return -1;
+            if (recvString(sock, pseudo, sizeof(pseudo)) < 0) return -1;
+            if (recvString(sock, email, sizeof(email)) < 0) return -1;
+            if (recvString(sock, salt_hex, sizeof(salt_hex)) < 0) return -1;
+            if (recvString(sock, hash_hex, sizeof(hash_hex)) < 0) return -1;
+
+            // Mot de passe securise stocke = salt_hex + hash_hex concatenes
+            char securedPassword[SALT_LEN * 2 + HASH_LEN * 2 + 1];
+            snprintf(securedPassword, sizeof(securedPassword), "%s%s", salt_hex, hash_hex);
+
+            int ok = registerUser(nom[0], prenom, pseudo, email, securedPassword);
+
+            sendType(sock, MSG_REGISTER_RESPONSE);
+            sendString(sock, ok == 0 ? "OK" : "Erreur lors de l'inscription (pseudo/email deja pris ?).");
+            continue;
+        }
+
+        // Type inconnu en phase d'authentification : on ignore et on continue
+    }
+
+    return -1;
+}
+
+// ---------------------------------------------------------------------
+// Thread dedie a un client : authentification puis diffusion des messages
+// ---------------------------------------------------------------------
 THREAD_RET handleClient(void *arg) {
     int index = *(int*)arg;
     free(arg);
     SOCKET sock = clients[index].socket;
+
+    if (handleAuthPhase(index) < 0) {
+        closesocket(sock);
+        LOCK();
+        clients[index].active = 0;
+        clients[index].loggedIn = 0;
+        UNLOCK();
+        printf("\nClient deconnecte avant authentification.\nVous: ");
+        fflush(stdout);
+#ifdef _WIN32
+        return 0;
+#else
+        return NULL;
+#endif
+    }
+
+    printf("\n%s authentifie.\nVous: ", clients[index].pseudo);
+    fflush(stdout);
+
     char buffer[1024];
     int bytesReceived;
 
@@ -140,6 +230,7 @@ THREAD_RET handleClient(void *arg) {
     closesocket(sock);
     LOCK();
     clients[index].active = 0;
+    clients[index].loggedIn = 0;
     UNLOCK();
     printf("\n%s deconnecte.\nVous: ", clients[index].pseudo);
     fflush(stdout);
@@ -151,7 +242,9 @@ THREAD_RET handleClient(void *arg) {
 #endif
 }
 
-// Thread d'acceptation : tourne en boucle pour accepter de nouveaux clients
+// ---------------------------------------------------------------------
+// Thread d'acceptation (inchange, sauf init loggedIn)
+// ---------------------------------------------------------------------
 THREAD_RET acceptClients(void *arg) {
     struct sockaddr_in clientAddr;
     socklen_t clientAddrSize = sizeof(clientAddr);
@@ -177,10 +270,11 @@ THREAD_RET acceptClients(void *arg) {
         }
         clients[slot].socket = newSocket;
         clients[slot].active = 1;
+        clients[slot].loggedIn = 0;
         snprintf(clients[slot].pseudo, sizeof(clients[slot].pseudo), "Client%d", slot + 1);
         UNLOCK();
 
-        printf("\n%s connecte.\nVous: ", clients[slot].pseudo);
+        printf("\nNouvelle connexion (slot %d), en attente d'authentification.\nVous: ", slot + 1);
         fflush(stdout);
 
         int *indexArg = malloc(sizeof(int));
@@ -216,7 +310,10 @@ int main() {
     InitializeCriticalSection(&clientsMutex);
 #endif
 
-    for (int i = 0; i < MAX_CLIENTS; i++) clients[i].active = 0;
+    for (int i = 0; i < MAX_CLIENTS; i++) {
+        clients[i].active = 0;
+        clients[i].loggedIn = 0;
+    }
 
     listenSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (listenSocket == INVALID_SOCKET) {
@@ -256,7 +353,6 @@ int main() {
     pthread_create(&acceptThread, NULL, acceptClients, NULL);
 #endif
 
-    // Le thread principal diffuse les messages de l'admin a tous les clients
     printf("Vous: ");
     fflush(stdout);
     while (running) {

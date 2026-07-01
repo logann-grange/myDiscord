@@ -34,9 +34,11 @@ typedef struct {
     GtkWidget *messages_box;
     GtkWidget *input_entry;
     GtkWidget *panel_popover;
+    GtkWidget *username_label;
     char current_channel[64];
     UserRole role;
     char pseudo[64];
+    GtkWidget *active_channel_btn;
 
     // Settings
     GtkWidget *entry_settings_pseudo;

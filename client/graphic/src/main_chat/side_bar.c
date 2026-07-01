@@ -25,6 +25,14 @@ static void on_channel_clicked(GtkButton *btn, gpointer data) {
 
     strncpy(w->current_channel, cd->channel_name, sizeof(w->current_channel) - 1);
 
+    if (w->active_channel_btn != NULL) {
+        gtk_widget_set_name(w->active_channel_btn, "channel");
+    }
+
+    // Met le style actif sur le nouveau bouton
+    gtk_widget_set_name(cd->btn, "channel-active");
+    w->active_channel_btn = cd->btn;
+
     char header[72];
     snprintf(header, sizeof(header), "# %s", cd->channel_name);
     gtk_label_set_text(GTK_LABEL(w->chan_name_label), header);
@@ -59,6 +67,7 @@ static GtkWidget *build_channel_button(const char *name, gboolean active, AppWid
 
     ChannelData *cd = g_malloc(sizeof(ChannelData));
     cd->w = w;
+    cd->btn = btn;
     strncpy(cd->channel_name, name, sizeof(cd->channel_name) - 1);
 
     g_signal_connect_data(btn, "clicked",
@@ -78,6 +87,23 @@ static GtkWidget *build_category(const char *name) {
     gtk_widget_set_margin_start(label, 8);
     return label;
 }
+
+void clear_channels(AppWidgets *w) {
+    GList *children = gtk_container_get_children(GTK_CONTAINER(w->channels_box));
+    for (GList *l = children; l != NULL; l = l->next) {
+        gtk_widget_destroy(GTK_WIDGET(l->data));
+    }
+    g_list_free(children);
+}
+
+void add_channel_to_sidebar(AppWidgets *w, const char *category, const char *channel_name) {
+    // Cherche si la catégorie existe déjà
+    // Pour simplifier, on ajoute juste le canal directement
+    GtkWidget *btn = build_channel_button(channel_name, FALSE, w);
+    gtk_box_pack_start(GTK_BOX(w->channels_box), btn, FALSE, FALSE, 0);
+    gtk_widget_show(btn);
+}
+
 
 GtkWidget *build_sidebar(AppWidgets *w) {
     GtkWidget *sidebar = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
@@ -103,24 +129,26 @@ GtkWidget *build_sidebar(AppWidgets *w) {
         GTK_POLICY_NEVER, GTK_POLICY_AUTOMATIC);
     gtk_box_pack_start(GTK_BOX(sidebar), scroll, TRUE, TRUE, 0);
 
-    GtkWidget *channels_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 2);
-    gtk_widget_set_margin_start(channels_box, 8);
-    gtk_widget_set_margin_end(channels_box, 8);
-    gtk_container_add(GTK_CONTAINER(scroll), channels_box);
+    w->channels_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 2);
+    gtk_widget_set_margin_start(w->channels_box, 8);
+    gtk_widget_set_margin_end(w->channels_box, 8);
+    gtk_container_add(GTK_CONTAINER(scroll), w->channels_box);
 
-    gtk_box_pack_start(GTK_BOX(channels_box), build_category("GÉNÉRAL"), FALSE, FALSE, 0);
-    gtk_box_pack_start(GTK_BOX(channels_box), build_channel_button("accueil", FALSE, w), FALSE, FALSE, 0);
-    gtk_box_pack_start(GTK_BOX(channels_box), build_channel_button("général", TRUE, w), FALSE, FALSE, 0);
-    gtk_box_pack_start(GTK_BOX(channels_box), build_channel_button("annonces", FALSE, w), FALSE, FALSE, 0);
+    // TODO: canaux chargés dynamiquement depuis le serveur via network_request_channels()
+    // Canaux temporaires en attendant le serveur
+    gtk_box_pack_start(GTK_BOX(w->channels_box), build_category("GÉNÉRAL"), FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(w->channels_box), build_channel_button("accueil", FALSE, w), FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(w->channels_box), build_channel_button("général", TRUE, w), FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(w->channels_box), build_channel_button("annonces", FALSE, w), FALSE, FALSE, 0);
 
-    gtk_box_pack_start(GTK_BOX(channels_box), build_category("DÉVELOPPEMENT"), FALSE, FALSE, 0);
-    gtk_box_pack_start(GTK_BOX(channels_box), build_channel_button("frontend", FALSE, w), FALSE, FALSE, 0);
-    gtk_box_pack_start(GTK_BOX(channels_box), build_channel_button("backend", FALSE, w), FALSE, FALSE, 0);
-    gtk_box_pack_start(GTK_BOX(channels_box), build_channel_button("code-review", FALSE, w), FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(w->channels_box), build_category("DÉVELOPPEMENT"), FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(w->channels_box), build_channel_button("frontend", FALSE, w), FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(w->channels_box), build_channel_button("backend", FALSE, w), FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(w->channels_box), build_channel_button("code-review", FALSE, w), FALSE, FALSE, 0);
 
-    gtk_box_pack_start(GTK_BOX(channels_box), build_category("RESSOURCES"), FALSE, FALSE, 0);
-    gtk_box_pack_start(GTK_BOX(channels_box), build_channel_button("liens-utiles", FALSE, w), FALSE, FALSE, 0);
-    gtk_box_pack_start(GTK_BOX(channels_box), build_channel_button("outils", FALSE, w), FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(w->channels_box), build_category("RESSOURCES"), FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(w->channels_box), build_channel_button("liens-utiles", FALSE, w), FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(w->channels_box), build_channel_button("outils", FALSE, w), FALSE, FALSE, 0);
 
     GtkWidget *user_area = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
     gtk_widget_set_name(user_area, "user-area");
@@ -134,13 +162,13 @@ GtkWidget *build_sidebar(AppWidgets *w) {
     gtk_box_pack_start(GTK_BOX(user_area), avatar, FALSE, FALSE, 0);
 
     GtkWidget *user_info = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
-    GtkWidget *username = gtk_label_new(w->pseudo);
-    gtk_widget_set_name(username, "username");
-    gtk_widget_set_halign(username, GTK_ALIGN_START);
+    w->username_label = gtk_label_new(w->pseudo);
+    gtk_widget_set_name(w->username_label, "username");
+    gtk_widget_set_halign(w->username_label, GTK_ALIGN_START);
     GtkWidget *status = gtk_label_new("en ligne");
     gtk_widget_set_name(status, "user-status");
     gtk_widget_set_halign(status, GTK_ALIGN_START);
-    gtk_box_pack_start(GTK_BOX(user_info), username, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(user_info), w->username_label, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(user_info), status, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(user_area), user_info, TRUE, TRUE, 0);
 

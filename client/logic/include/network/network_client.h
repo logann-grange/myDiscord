@@ -8,8 +8,12 @@
 typedef void (*MessageReceivedCallback)(int message_id, const char *auteur,
                                           const char *channel, const char *texte, const char *date);
 
+typedef void (*ChannelReceivedCallback)(const char *category, const char *channel_name);
+
 void network_start_listening(MessageReceivedCallback callback);
 
+bool network_request_channels(void);
+void network_set_channel_callback(ChannelReceivedCallback callback);
 // Connexion au serveur
 bool network_connect(const char *ip, int port);
 void network_disconnect(void);

@@ -5,22 +5,25 @@ static void on_save_pseudo_clicked(GtkButton *btn, gpointer data) {
     AppWidgets *w = (AppWidgets *)data;
     const char *new_pseudo = gtk_entry_get_text(GTK_ENTRY(w->entry_settings_pseudo));
 
-    if (strlen(new_pseudo) == 0) {
-        GtkWidget *dialog = gtk_message_dialog_new(GTK_WINDOW(w->window),
-            GTK_DIALOG_MODAL, GTK_MESSAGE_ERROR, GTK_BUTTONS_OK,
-            "Le pseudo ne peut pas être vide.");
-        gtk_widget_show_all(dialog);
-        g_signal_connect(dialog, "response", G_CALLBACK(gtk_widget_destroy), NULL);
-        return;
+    const char *message = NULL;
+
+    switch (validate_pseudo(new_pseudo)) {
+        case SETTINGS_PSEUDO_VIDE:
+            message = "Le pseudo ne peut pas être vide."; break;
+        case SETTINGS_PSEUDO_TROP_COURT:
+            message = "Le pseudo doit contenir au moins 3 caractères."; break;
+        case SETTINGS_OK:
+            strncpy(w->pseudo, new_pseudo, sizeof(w->pseudo) - 1);
+            gtk_label_set_text(GTK_LABEL(w->username_label), w->pseudo);
+            network_send_update_pseudo(w->pseudo);
+            gtk_stack_set_visible_child_name(GTK_STACK(w->stack), "chat");
+            return;
     }
 
-    strncpy(w->pseudo, new_pseudo, sizeof(w->pseudo) - 1);
-    g_print("Pseudo changé : %s\n", w->pseudo);
-    // TODO: envoyer au serveur
-    network_send_update_pseudo(new_pseudo);
-
-    // Retour au chat
-    gtk_stack_set_visible_child_name(GTK_STACK(w->stack), "chat");
+    GtkWidget *dialog = gtk_message_dialog_new(GTK_WINDOW(w->window),
+        GTK_DIALOG_MODAL, GTK_MESSAGE_ERROR, GTK_BUTTONS_OK, "%s", message);
+    gtk_widget_show_all(dialog);
+    g_signal_connect(dialog, "response", G_CALLBACK(gtk_widget_destroy), NULL);
 }
 
 static void on_back_to_chat_clicked(GtkButton *btn, gpointer data) {

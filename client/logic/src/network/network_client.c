@@ -1,6 +1,6 @@
 #include "../../include/network/network_client.h"
 
-
+static ChannelReceivedCallback on_channel_received = NULL;
 static MessageReceivedCallback on_message_received = NULL;
 
 static void *listen_thread(void *arg) {
@@ -104,5 +104,15 @@ bool network_send_update_pseudo(const char *new_pseudo) {
 bool network_request_channel_history(const char *channel) {
     printf("[NETWORK] Demande historique du canal #%s (non implémenté)\n", channel);
     // TODO: envoyer paquet REQUEST_HISTORY
+    return false;
+}
+
+void network_set_channel_callback(ChannelReceivedCallback callback) {
+    on_channel_received = callback;
+}
+
+bool network_request_channels(void) {
+    printf("[NETWORK] Demande liste des canaux (non implémenté)\n");
+    // TODO: envoyer paquet REQUEST_CHANNELS
     return false;
 }

@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 // #include "../include/channel.h"
 #include "../include/user.h"
 #include "../include/message.h"
@@ -45,8 +46,58 @@ Client clients[MAX_CLIENTS];
 SOCKET listenSocket;
 volatile int running = 1;
 
+
+// Envoie une seule chaine : longueur (4 octets, network order) + contenu
+static int sendString(SOCKET sock, const char *str) {
+    uint32_t len = str ? (uint32_t)strlen(str) : 0;
+    uint32_t netLen = htonl(len);
+
+    // Envoi de la longueur
+    int sent = 0;
+    const char *lenData = (const char*)&netLen;
+    while (sent < (int)sizeof(netLen)) {
+        int n = send(sock, lenData + sent, sizeof(netLen) - sent, 0);
+        if (n <= 0) return -1;
+        sent += n;
+    }
+
+    // Envoi du contenu (si non vide)
+    sent = 0;
+    while (str && sent < (int)len) {
+        int n = send(sock, str + sent, len - sent, 0);
+        if (n <= 0) return -1;
+        sent += n;
+    }
+    return 0;
+}
+
+// Envoie la struct User entiere a un client
+int sendUser(SOCKET sock, User user) {
+    uint32_t netId = htonl((uint32_t)user.id);
+
+    int sent = 0;
+    const char *idData = (const char*)&netId;
+    while (sent < (int)sizeof(netId)) {
+        int n = send(sock, idData + sent, sizeof(netId) - sent, 0);
+        if (n <= 0) return -1;
+        sent += n;
+    }
+
+    if (sendString(sock, user.name)      < 0) return -1;
+    if (sendString(sock, user.firstName) < 0) return -1;
+    if (sendString(sock, user.pseudo)    < 0) return -1;
+    if (sendString(sock, user.password)  < 0) return -1;
+    if (sendString(sock, user.email)     < 0) return -1;
+    if (sendString(sock, user.ip)        < 0) return -1;
+    if (sendString(sock, user.rank)      < 0) return -1;
+    if (sendString(sock, user.status)    < 0) return -1;
+
+    return 0;
+}
+
 // Envoie un message a tous les clients actifs
-void broadcastMessage(const char *message, SOCKET excludeSocket) {
+void broadcastMessage(const char *message, SOCKET excludeSocket)
+{
     LOCK();
     for (int i = 0; i < MAX_CLIENTS; i++) {
         if (clients[i].active && clients[i].socket != excludeSocket) {

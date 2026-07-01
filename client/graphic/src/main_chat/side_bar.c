@@ -135,20 +135,7 @@ GtkWidget *build_sidebar(AppWidgets *w) {
     gtk_container_add(GTK_CONTAINER(scroll), w->channels_box);
 
     // TODO: canaux chargés dynamiquement depuis le serveur via network_request_channels()
-    // Canaux temporaires en attendant le serveur
-    gtk_box_pack_start(GTK_BOX(w->channels_box), build_category("GÉNÉRAL"), FALSE, FALSE, 0);
-    gtk_box_pack_start(GTK_BOX(w->channels_box), build_channel_button("accueil", FALSE, w), FALSE, FALSE, 0);
-    gtk_box_pack_start(GTK_BOX(w->channels_box), build_channel_button("général", TRUE, w), FALSE, FALSE, 0);
-    gtk_box_pack_start(GTK_BOX(w->channels_box), build_channel_button("annonces", FALSE, w), FALSE, FALSE, 0);
-
-    gtk_box_pack_start(GTK_BOX(w->channels_box), build_category("DÉVELOPPEMENT"), FALSE, FALSE, 0);
-    gtk_box_pack_start(GTK_BOX(w->channels_box), build_channel_button("frontend", FALSE, w), FALSE, FALSE, 0);
-    gtk_box_pack_start(GTK_BOX(w->channels_box), build_channel_button("backend", FALSE, w), FALSE, FALSE, 0);
-    gtk_box_pack_start(GTK_BOX(w->channels_box), build_channel_button("code-review", FALSE, w), FALSE, FALSE, 0);
-
-    gtk_box_pack_start(GTK_BOX(w->channels_box), build_category("RESSOURCES"), FALSE, FALSE, 0);
-    gtk_box_pack_start(GTK_BOX(w->channels_box), build_channel_button("liens-utiles", FALSE, w), FALSE, FALSE, 0);
-    gtk_box_pack_start(GTK_BOX(w->channels_box), build_channel_button("outils", FALSE, w), FALSE, FALSE, 0);
+    network_request_channels();
 
     GtkWidget *user_area = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
     gtk_widget_set_name(user_area, "user-area");

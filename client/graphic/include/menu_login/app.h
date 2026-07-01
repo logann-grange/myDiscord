@@ -39,6 +39,7 @@ typedef struct {
     UserRole role;
     char pseudo[64];
     GtkWidget *active_channel_btn;
+    GtkWidget *channels_box;
 
     // Settings
     GtkWidget *entry_settings_pseudo;

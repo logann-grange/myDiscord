@@ -6,6 +6,30 @@
 
 static AppWidgets *global_app_widgets = NULL;
 
+
+static gboolean add_channel_idle(gpointer data) {
+    typedef struct { AppWidgets *w; char category[64]; char channel_name[64]; } ChannelData2;
+    ChannelData2 *cd = (ChannelData2 *)data;
+    add_channel_to_sidebar(cd->w, cd->category, cd->channel_name);
+    g_free(cd);
+    return FALSE;
+}
+
+
+
+static void on_channel_received(const char *category, const char *channel_name) {
+    if (!global_app_widgets) return;
+
+    // Repasse dans le thread GTK
+    typedef struct { AppWidgets *w; char category[64]; char channel_name[64]; } ChannelData2;
+    ChannelData2 *cd = g_malloc(sizeof(ChannelData2));
+    cd->w = global_app_widgets;
+    strncpy(cd->category, category, sizeof(cd->category) - 1);
+    strncpy(cd->channel_name, channel_name, sizeof(cd->channel_name) - 1);
+
+    g_idle_add((GSourceFunc)add_channel_idle, cd);
+}
+
 static void on_network_message_received(int message_id, const char *auteur, const char *channel,
                                           const char *texte, const char *date) {
     if (!global_app_widgets) return;
@@ -24,11 +48,9 @@ static void on_network_message_received(int message_id, const char *auteur, cons
 GtkWidget *build_chat_page(AppWidgets *w) {
     // Rôle de test (à remplacer plus tard par les données du serveur)
     
-    w->role = ROLE_ADMINISTRATEUR;
-    strncpy(w->pseudo, "moi", sizeof(w->pseudo) - 1);
-
     w->active_channel_btn = NULL;  
     global_app_widgets = w; 
+    // TODO: rôle et pseudo récupérés depuis le serveur après login
 
     w->main_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
 
@@ -53,23 +75,3 @@ void chat_start_network_listening(AppWidgets *w) {
     network_start_listening(on_network_message_received);
 }
 
-static void on_channel_received(const char *category, const char *channel_name) {
-    if (!global_app_widgets) return;
-
-    // Repasse dans le thread GTK
-    typedef struct { AppWidgets *w; char category[64]; char channel_name[64]; } ChannelData2;
-    ChannelData2 *cd = g_malloc(sizeof(ChannelData2));
-    cd->w = global_app_widgets;
-    strncpy(cd->category, category, sizeof(cd->category) - 1);
-    strncpy(cd->channel_name, channel_name, sizeof(cd->channel_name) - 1);
-
-    g_idle_add((GSourceFunc)add_channel_idle, cd);
-}
-
-static gboolean add_channel_idle(gpointer data) {
-    typedef struct { AppWidgets *w; char category[64]; char channel_name[64]; } ChannelData2;
-    ChannelData2 *cd = (ChannelData2 *)data;
-    add_channel_to_sidebar(cd->w, cd->category, cd->channel_name);
-    g_free(cd);
-    return FALSE;
-}

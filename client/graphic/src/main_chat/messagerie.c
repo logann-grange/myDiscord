@@ -169,16 +169,7 @@ GtkWidget *build_messagerie(AppWidgets *w) {
     gtk_widget_set_name(w->messages_box, "messages-box");
     gtk_container_add(GTK_CONTAINER(scroll), w->messages_box);
 
-    // Messages de test (id factices en attendant le serveur)
-    gtk_box_pack_start(GTK_BOX(w->messages_box),
-        build_message(1, "clara_dev", "19:31", "Salut tout le monde !", 'C'),
-        FALSE, FALSE, 0);
-    gtk_box_pack_start(GTK_BOX(w->messages_box),
-        build_message(2, "theo.js", "19:32", "Ouais, super conférence !", 'T'),
-        FALSE, FALSE, 0);
-    gtk_box_pack_start(GTK_BOX(w->messages_box),
-        build_message(3, "naomi_ux", "20:01", "Y'a un replay quelque part ?", 'N'),
-        FALSE, FALSE, 0);
+    // TODO: messages chargés depuis le serveur via network_request_channel_history()
 
     gtk_box_pack_start(GTK_BOX(main_box), gtk_separator_new(GTK_ORIENTATION_HORIZONTAL), FALSE, FALSE, 0);
 

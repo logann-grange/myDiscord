@@ -14,6 +14,7 @@ void network_start_listening(MessageReceivedCallback callback);
 
 bool network_request_channels(void);
 void network_set_channel_callback(ChannelReceivedCallback callback);
+
 // Connexion au serveur
 bool network_connect(const char *ip, int port);
 void network_disconnect(void);

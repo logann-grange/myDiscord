@@ -94,15 +94,18 @@ char ***bddSelect(const char *tableName, char **fields, char **params, int size,
     return table;
 }
 
+// Retourne l'id inséré (>= 0) en cas de succès, -1 en cas d'échec.
+// NOTE: suppose que la table a une colonne "id" (c'est le cas pour
+// "user", "channel" et "message" dans ce projet).
 int bddInsert(const char *tableName, char **fields, char **params, int size)
 {
     PGconn *conn = bddConnexion();
 
-    if (size <= 0) return 0;
+    if (size <= 0) return -1;
 
     size_t cap = 32 + strlen(tableName);
     char *sql = malloc(cap);
-    if (!sql) return 0;
+    if (!sql) return -1;
 
     int len = snprintf(sql, cap, "INSERT INTO %s (", tableName);
 
@@ -111,14 +114,14 @@ int bddInsert(const char *tableName, char **fields, char **params, int size)
     {
         int frag_len = snprintf(NULL, 0, "%s%s", i > 0 ? ", " : "", fields[i]);
         char *tmp = realloc(sql, len + frag_len + 1);
-        if (!tmp) { free(sql); return 0; }
+        if (!tmp) { free(sql); return -1; }
         sql = tmp;
         len += snprintf(sql + len, frag_len + 1, "%s%s", i > 0 ? ", " : "", fields[i]);
     }
 
     int tail_len = snprintf(NULL, 0, ") VALUES (");
     char *tmp = realloc(sql, len + tail_len + 1);
-    if (!tmp) { free(sql); return 0; }
+    if (!tmp) { free(sql); return -1; }
     sql = tmp;
     len += snprintf(sql + len, tail_len + 1, ") VALUES (");
 
@@ -126,25 +129,34 @@ int bddInsert(const char *tableName, char **fields, char **params, int size)
     {
         int frag_len = snprintf(NULL, 0, "%s$%d", i > 0 ? ", " : "", i + 1);
         char *t2 = realloc(sql, len + frag_len + 1);
-        if (!t2) { free(sql); return 0; }
+        if (!t2) { free(sql); return -1; }
         sql = t2;
         len += snprintf(sql + len, frag_len + 1, "%s$%d", i > 0 ? ", " : "", i + 1);
     }
 
-    char *t3 = realloc(sql, len + 2);
-    if (!t3) { free(sql); return 0; }
+    // ")" puis " RETURNING id" pour récupérer l'id généré
+    const char *closing = ") RETURNING id";
+    int closing_len = (int)strlen(closing);
+    char *t3 = realloc(sql, len + closing_len + 1);
+    if (!t3) { free(sql); return -1; }
     sql = t3;
-    snprintf(sql + len, 2, ")");
+    snprintf(sql + len, closing_len + 1, "%s", closing);
 
     PGresult *res = PQexecParams(conn, sql, size, NULL, (const char * const *)params, NULL, NULL, 0);
 
-    int ok = (PQresultStatus(res) == PGRES_COMMAND_OK);
-    if (!ok)
+    int insertedId = -1;
+    if (PQresultStatus(res) == PGRES_TUPLES_OK && PQntuples(res) > 0)
+    {
+        insertedId = atoi(PQgetvalue(res, 0, 0));
+    }
+    else
+    {
         fprintf(stderr, "Insertion échouée: %s\n", PQerrorMessage(conn));
+    }
 
     PQclear(res);
     free(sql);
-    return ok;
+    return insertedId;
 }
 
 int bddUpdate(const char *tableName, char **fields, char **params, int size, int id)
@@ -159,7 +171,6 @@ int bddUpdate(const char *tableName, char **fields, char **params, int size, int
 
     int len = snprintf(sql, cap, "UPDATE %s SET ", tableName);
 
-    // Liste des champs à modifier : champ1 = $1, champ2 = $2, ...
     for (int i = 0; i < size; i++)
     {
         int frag_len = snprintf(NULL, 0, "%s%s = $%d", i > 0 ? ", " : "", fields[i], i + 1);
@@ -169,18 +180,15 @@ int bddUpdate(const char *tableName, char **fields, char **params, int size, int
         len += snprintf(sql + len, frag_len + 1, "%s%s = $%d", i > 0 ? ", " : "", fields[i], i + 1);
     }
 
-    // Clause WHERE sur id (dernier paramètre : $size+1)
     int where_len = snprintf(NULL, 0, " WHERE id = $%d", size + 1);
     char *tmp2 = realloc(sql, len + where_len + 1);
     if (!tmp2) { free(sql); return 0; }
     sql = tmp2;
     len += snprintf(sql + len, where_len + 1, " WHERE id = $%d", size + 1);
 
-    // Conversion de l'id en chaîne pour PQexecParams
     char idStr[32];
     snprintf(idStr, sizeof(idStr), "%d", id);
 
-    // On construit un tableau de paramètres = params[] + idStr à la fin
     char **allParams = malloc((size + 1) * sizeof(char *));
     if (!allParams) { free(sql); return 0; }
     for (int i = 0; i < size; i++)
@@ -210,6 +218,7 @@ void bddFreeResult(char ***table, int nrows, int ncols)
     free(table);
 }
 
+
 // int main() {
 //     PGconn *conn = bddConnexion();
 
@@ -224,7 +233,3 @@ void bddFreeResult(char ***table, int nrows, int ncols)
 //     char *params[] = {"admin@discord.fr", "admin", "admin", "admin", hashed, "", "admin"};
 
 //     bddInsert("\"user\"", fields, params, 7);
-
-//     free(hashed);
-//     return 0;
-// }

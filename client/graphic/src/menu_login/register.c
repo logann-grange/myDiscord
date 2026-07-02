@@ -1,5 +1,6 @@
 #include "../../include/menu_login/register.h"
 #include "menu_login/register_logic.h"
+#include "../../../logic/include/menu_login/network.h"
 
 static void on_register_clicked(GtkButton *btn, gpointer data) {
     AppWidgets *w = (AppWidgets *)data;
@@ -10,6 +11,7 @@ static void on_register_clicked(GtkButton *btn, gpointer data) {
     const char *password = gtk_entry_get_text(GTK_ENTRY(w->entry_reg_password));
 
     const char *message = NULL;
+    char network_error[256];
 
     switch (validate_register(nom, prenom, pseudo, email, password)) {
         case REGISTER_CHAMPS_VIDES:
@@ -21,11 +23,22 @@ static void on_register_clicked(GtkButton *btn, gpointer data) {
         case REGISTER_EMAIL_INVALIDE:
             message = "Veuillez entrer une adresse email valide."; break;
         case REGISTER_OK:
-            hash_password(password);
             g_print("Register: %s %s / %s / %s\n", prenom, nom, pseudo, email);
-            network_send_register(nom, prenom, pseudo,
-                            email, password,"salt_factice");//TODO: sel généré aléatoirement
-            return;
+
+            if (network_send_register(nom, prenom, pseudo, email, password,
+                                       network_error, sizeof(network_error))) {
+                // Inscription reussie : on renvoie vers l'ecran de connexion
+                GtkWidget *info = gtk_message_dialog_new(GTK_WINDOW(w->window),
+                    GTK_DIALOG_MODAL, GTK_MESSAGE_INFO, GTK_BUTTONS_OK,
+                    "Compte cree avec succes, vous pouvez vous connecter.");
+                gtk_widget_show_all(info);
+                g_signal_connect(info, "response", G_CALLBACK(gtk_widget_destroy), NULL);
+                gtk_stack_set_visible_child_name(GTK_STACK(w->stack), "login");
+                return;
+            }
+
+            message = network_error;
+            break;
     }
 
     GtkWidget *dialog = gtk_message_dialog_new(GTK_WINDOW(w->window),

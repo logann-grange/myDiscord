@@ -1,193 +1,121 @@
-#include "../include/channel.h"
+#include "../include/message.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
-Channel *createChannel(int id, char* name, char *permission, char *status)
+// FIX: le type de retour était "char *" alors que la fonction construit et
+// retourne un Message*. Cela ne compilait pas (incompatibilité avec message.h,
+// qui déclare probablement Message *createMessage(...)).
+Message *createMessage(int id, int id_user, int idChannel, time_t date, char *text, char *reaction, char *status)
 {
-    Channel *channel = malloc(sizeof(Channel));
-    channel->id = id;
-    channel->name = name;
-    channel->permission = permission;
-    channel->status = status;
+    Message *msg = malloc(sizeof(Message));
+    if (!msg) return NULL;
 
-    fillListUser(channel);
-    fillListMessage(channel);
+    msg->id = id;
+    msg->idUser = id_user;
+    msg->idChannel = idChannel;
+    msg->date = date;
+    msg->reaction = reaction;
+    msg->status = status;
+    msg->text = text;
 
-    return channel;
+    return msg;
 }
 
-void changeChannelName(Channel *channel, char *name)
+// FIX: message->text est un char*, pas un char**. Le code original faisait
+// *message->text (déréférence invalide) et réaffectait message->text = new_message
+// après un realloc(*message->text, ...) sur une variable non initialisée : UB garanti.
+void writeMessage(Message *message, char c) // ajoute un caractere au message
 {
-    channel->name = name;
-
-    char *fields[] = {"name"};
-    char *params[] = {channel->name};
-    bddUpdate("channel", fields, params, 1, channel->id);
+    int len = (message->text == NULL) ? 0 : strlen(message->text);
+    char *new_message = realloc(message->text, len + 2); // +1 pour c, +1 pour '\0'
+    if (new_message == NULL) {
+        // gère l'erreur d'allocation
+        return;
+    }
+    new_message[len] = c;
+    new_message[len + 1] = '\0';
+    message->text = new_message;
+    message->status = "en cours";
 }
 
-void changeChannelPermission(Channel *channel, char *permission)
+int insertMessage(Message *message)
 {
-    channel->permission = permission;
+    char idUserStr[16], idChannelStr[16], dateStr[32];
+    snprintf(idUserStr, sizeof(idUserStr), "%d", message->idUser);
+    snprintf(idChannelStr, sizeof(idChannelStr), "%d", message->idChannel);
+    snprintf(dateStr, sizeof(dateStr), "%ld", (long)message->date);
 
-    char *fields[] = {"permission"};
-    char *params[] = {channel->permission};
-    bddUpdate("channel", fields, params, 1, channel->id);
+    char *fields[] = {"id_user", "date", "text", "status", "id_channel"};
+    char *params[] = {idUserStr, dateStr, message->text, message->status, idChannelStr};
+
+    return bddInsert("message", fields, params, 5);
 }
 
-void deleteChannel(Channel *channel)
+// FIX: new_message est un char* (pas char**). L'original faisait
+// message->text = *new_message (assignait un simple char à un char*, erreur de
+// type) et n'utilisait jamais new_len. On duplique proprement la nouvelle
+// chaîne, on libère l'ancienne pour éviter une fuite mémoire, et on persiste
+// à la fois le texte ET le statut en une seule requête (l'original oubliait
+// de sauvegarder le statut "modifié" en base).
+void editMessage(Message *message, char *new_message)
 {
-    channel->status = "supprimé";
+    char *copy = strdup(new_message);
+    if (copy == NULL) return;
+
+    free(message->text);
+    message->text = copy;
+    message->status = "modifié";
+
+    char *fields[] = {"text", "status"};
+    char *params[] = {message->text, message->status};
+    bddUpdate("message", fields, params, 2, message->id);
+}
+
+void deleteMessage(Message *message)
+{
+    message->status = "supprimé";
 
     char *fields[] = {"status"};
-    char *params[] = {channel->status};
-    bddUpdate("channel", fields, params, 1, channel->id);
+    char *params[] = {message->status};
+    bddUpdate("message", fields, params, 1, message->id);
+
+    free(message);
 }
 
-// charge la liste d'utilisateur lié au channel depuis la bdd
-void fillListUser(Channel *channel)
+// FIX: même bug de typage que writeMessage (déréférencement de char* comme
+// char**, et réutilisation erronée de message->text au lieu de message->reaction
+// dans le calcul de longueur / realloc). La boucle de copie utilisait aussi
+// une condition "i <= strlen(*reaction)" qui lisait un octet hors-limites.
+// On ajoute enfin l'appel bddUpdate manquant (le commentaire d'origine
+// indiquait "ajouter la requette sql update" mais rien n'était fait).
+void addReaction(Message *message, char *reaction)
 {
-    if (channel == NULL || channel->permission == NULL)
-        return;
+    // message->reaction de forme : reaction1;reaction2;reaction3;
+    int len = (message->reaction == NULL) ? 0 : strlen(message->reaction);
+    int reaction_len = strlen(reaction);
 
-    char *fields[1];
-    char *params[1];
-
-    fields[0] = "rank";
-    params[0] = channel->permission;
-
-    int nrows = 0, ncols = 0;
-
-    char ***result = bddSelect("user", fields, params, 1, &nrows, &ncols);
-
-    if (result == NULL)
-    {
-        channel->listUserId = malloc(sizeof(int));
-        if (channel->listUserId != NULL)
-            channel->listUserId[0] = -1;
+    char *new_reaction = realloc(message->reaction, len + reaction_len + 1); // +1 pour '\0'
+    if (new_reaction == NULL) {
         return;
     }
 
-    int *ids = malloc((nrows + 1) * sizeof(int));
-    if (ids == NULL)
-    {
-        for (int i = 0; i < nrows; i++)
-        {
-            for (int j = 0; j < ncols; j++)
-                free(result[i][j]);
-            free(result[i]);
-        }
-        free(result);
-        return;
+    for (int i = 0; i < reaction_len; i++) {
+        new_reaction[len + i] = reaction[i];
     }
+    new_reaction[len + reaction_len] = '\0';
 
-    int idCol = 0;
+    message->reaction = new_reaction;
 
-    for (int i = 0; i < nrows; i++)
-        ids[i] = result[i][idCol] ? atoi(result[i][idCol]) : -1;
-    ids[nrows] = -1; // sentinelle de fin de liste
-
-    channel->listUserId = ids;
-
-    for (int i = 0; i < nrows; i++)
-    {
-        for (int j = 0; j < ncols; j++)
-            free(result[i][j]);
-        free(result[i]);
-    }
-    free(result);
+    char *fields[] = {"reaction"};
+    char *params[] = {message->reaction};
+    bddUpdate("message", fields, params, 1, message->id);
 }
 
-void fillListMessage(Channel *channel)
-{
-    if (channel == NULL)
-        return;
-
-    char *fields[1];
-    char *params[1];
-    char idStr[12];
-
-    snprintf(idStr, sizeof(idStr), "%d", channel->id);
-
-    fields[0] = "id_channel";
-    params[0] = idStr;
-
-    int nrows = 0, ncols = 0;
-
-    char ***result = bddSelect("message", fields, params, 1, &nrows, &ncols);
-
-    if (result == NULL)
-    {
-        channel->listMessage = malloc(sizeof(Message *));
-        if (channel->listMessage != NULL)
-            channel->listMessage[0] = NULL;
-        return;
-    }
-
-    Message **messages = malloc((nrows + 1) * sizeof(Message *));
-    if (messages == NULL)
-    {
-        for (int i = 0; i < nrows; i++)
-        {
-            for (int j = 0; j < ncols; j++)
-                free(result[i][j]);
-            free(result[i]);
-        }
-        free(result);
-        return;
-    }
-
-    // 0: id | 1: id_user | 2: id_channel | 3: text | 4: date | 5: reaction | 6: status
-    const int COL_ID = 0;
-    const int COL_ID_USER = 1;
-    const int COL_ID_CHANNEL = 2;
-    const int COL_TEXT = 3;
-    const int COL_DATE = 4;
-    const int COL_REACTION = 5;
-    const int COL_STATUS = 6;
-
-    for (int i = 0; i < nrows; i++)
-    {
-        Message *msg = malloc(sizeof(Message));
-        if (msg == NULL)
-        {
-            for (int k = 0; k < i; k++)
-            {
-                free(messages[k]->text);
-                free(messages[k]->reaction);
-                free(messages[k]->status);
-                free(messages[k]);
-            }
-            free(messages);
-
-            for (int r = 0; r < nrows; r++)
-            {
-                for (int j = 0; j < ncols; j++)
-                    free(result[r][j]);
-                free(result[r]);
-            }
-            free(result);
-            return;
-        }
-
-        msg->id = result[i][COL_ID] ? atoi(result[i][COL_ID]) : -1;
-        msg->idUser = result[i][COL_ID_USER] ? atoi(result[i][COL_ID_USER]) : -1;
-        msg->idChannel = result[i][COL_ID_CHANNEL] ? atoi(result[i][COL_ID_CHANNEL]) : -1;
-
-        msg->text = result[i][COL_TEXT] ? strdup(result[i][COL_TEXT]) : NULL;
-        msg->reaction = result[i][COL_REACTION] ? strdup(result[i][COL_REACTION]) : NULL;
-        msg->status = result[i][COL_STATUS] ? strdup(result[i][COL_STATUS]) : NULL;
-
-        msg->date = result[i][COL_DATE] ? (time_t)atol(result[i][COL_DATE]) : 0;
-
-        messages[i] = msg;
-    }
-    messages[nrows] = NULL; // sentinelle de fin de liste
-
-    channel->listMessage = messages;
-
-    for (int i = 0; i < nrows; i++)
-    {
-        for (int j = 0; j < ncols; j++)
-            free(result[i][j]);
-        free(result[i]);
-    }
-    free(result);
+int deleteMessageById(int id) {
+    char idStr[16];
+    snprintf(idStr, sizeof(idStr), "%d", id);
+    char *fields[] = {"status"};
+    char *params[] = {"supprimé"};
+    return bddUpdate("message", fields, params, 1, id);
 }

@@ -20,7 +20,6 @@ static gboolean add_channel_idle(gpointer data) {
 static void on_channel_received(const char *category, const char *channel_name) {
     if (!global_app_widgets) return;
 
-    // Repasse dans le thread GTK
     typedef struct { AppWidgets *w; char category[64]; char channel_name[64]; } ChannelData2;
     ChannelData2 *cd = g_malloc(sizeof(ChannelData2));
     cd->w = global_app_widgets;
@@ -45,12 +44,30 @@ static void on_network_message_received(int message_id, const char *auteur, cons
     g_idle_add(display_incoming_message, msg);
 }
 
+typedef struct { AppWidgets *w; char channel[64]; int message_id; } DeletedMsgData;
+
+static gboolean apply_message_deleted_idle(gpointer data) {
+    DeletedMsgData *d = (DeletedMsgData *)data;
+    apply_message_deleted(d->w, d->channel, d->message_id);
+    g_free(d);
+    return FALSE;
+}
+
+static void on_message_deleted_received(const char *channel, int message_id) {
+    if (!global_app_widgets) return;
+
+    DeletedMsgData *d = g_malloc(sizeof(DeletedMsgData));
+    d->w = global_app_widgets;
+    strncpy(d->channel, channel, sizeof(d->channel) - 1);
+    d->channel[sizeof(d->channel) - 1] = '\0';
+    d->message_id = message_id;
+
+    g_idle_add(apply_message_deleted_idle, d);
+}
+
 GtkWidget *build_chat_page(AppWidgets *w) {
-    // Rôle de test (à remplacer plus tard par les données du serveur)
-    
-    w->active_channel_btn = NULL;  
-    global_app_widgets = w; 
-    // TODO: rôle et pseudo récupérés depuis le serveur après login
+    w->active_channel_btn = NULL;
+    global_app_widgets = w;
 
     w->main_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
 
@@ -66,12 +83,21 @@ GtkWidget *build_chat_page(AppWidgets *w) {
     return w->main_box;
 }
 
-void chat_start_network_listening(AppWidgets *w) {
-    global_app_widgets = w;
-    network_start_listening(on_network_message_received);
-    network_set_channel_callback(on_channel_received);
-    network_request_channels();  // demande la liste des canaux au serveur
-    network_set_channel_callback(on_channel_received);
-    network_start_listening(on_network_message_received);
+static void on_mod_response(gboolean success, const char *message) {
+    if (!global_app_widgets) return;
+    if (success) return;
+
+    GtkWidget *dialog = gtk_message_dialog_new(GTK_WINDOW(global_app_widgets->window),
+        GTK_DIALOG_MODAL, GTK_MESSAGE_ERROR, GTK_BUTTONS_OK, "%s", message);
+    gtk_widget_show_all(dialog);
+    g_signal_connect(dialog, "response", G_CALLBACK(gtk_widget_destroy), NULL);
 }
 
+void chat_start_network_listening(AppWidgets *w) {
+    global_app_widgets = w;
+    network_set_channel_callback(on_channel_received);
+    network_set_mod_callback((ModResponseCallback)on_mod_response);
+    network_set_delete_callback(on_message_deleted_received);
+    network_start_listening(on_network_message_received);
+    network_request_channels();
+}

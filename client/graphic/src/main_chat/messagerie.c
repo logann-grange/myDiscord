@@ -36,7 +36,7 @@ static void on_send_clicked(GtkButton *btn, gpointer data) {
     if (strlen(text) == 0) return;
     printf("Message envoyé dans #%s : %s\n", w->current_channel, text);
     gtk_entry_set_text(GTK_ENTRY(w->input_entry), "");
-    TODO: network_send_message(w->current_channel, text);
+    network_send_message(w->current_channel, text);
 }
 
 static void on_entry_activate(GtkEntry *entry, gpointer data) {
@@ -55,6 +55,9 @@ GtkWidget *build_message(int message_id, const char *auteur, const char *heure, 
     gtk_widget_set_margin_bottom(msg_box, 6);
     gtk_widget_set_margin_start(msg_box, 16);
     gtk_widget_set_margin_end(msg_box, 16);
+
+    // Permet de retrouver ce widget plus tard (ex: suppression en temps reel)
+    g_object_set_data(G_OBJECT(msg_box), "message-id", GINT_TO_POINTER(message_id));
 
     char avatar_str[2] = {avatar_lettre, '\0'};
     GtkWidget *avatar = gtk_label_new(avatar_str);
@@ -132,6 +135,24 @@ gboolean display_incoming_message(gpointer data) {
 
     g_free(msg);
     return FALSE;
+}
+
+// Appelee (depuis le thread GTK, via g_idle_add) quand le serveur notifie
+// que quelqu'un a supprime un message. Retrouve le bon widget via l'id
+// stocke dans build_message() et le detruit.
+void apply_message_deleted(AppWidgets *w, const char *channel, int message_id) {
+    if (strcmp(w->current_channel, channel) != 0) return;
+
+    GList *children = gtk_container_get_children(GTK_CONTAINER(w->messages_box));
+    for (GList *l = children; l != NULL; l = l->next) {
+        GtkWidget *box = GTK_WIDGET(l->data);
+        int id = GPOINTER_TO_INT(g_object_get_data(G_OBJECT(box), "message-id"));
+        if (id == message_id) {
+            gtk_widget_destroy(box);
+            break;
+        }
+    }
+    g_list_free(children);
 }
 
 GtkWidget *build_messagerie(AppWidgets *w) {

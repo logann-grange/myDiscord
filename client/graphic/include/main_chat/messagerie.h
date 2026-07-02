@@ -3,9 +3,11 @@
 
 #include "../menu_login/app.h"
 #include "../../logic/include/network/network_client.h"
+#include "../../../logic/include/menu_login/network.h"
 
 GtkWidget *build_messagerie(AppWidgets *w);
 GtkWidget *build_message(int message_id, const char *auteur, const char *heure, const char *texte, const char avatar_lettre);
+void apply_message_deleted(AppWidgets *w, const char *channel, int message_id);
 
 typedef struct {
     AppWidgets *w;

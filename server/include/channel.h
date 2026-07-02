@@ -25,3 +25,27 @@ void deleteChannel(Channel *channel);
 void fillListUser(Channel *channel);
 
 void fillListMessage(Channel *channel);
+
+
+typedef struct {
+    int id;
+    char auteur[64];
+    char texte[1024];
+    char date[32];
+} HistoryEntry;
+
+char **listAllChannelNames(int *outCount);
+
+void freeChannelNames(char **names, int count);
+
+int getChannelIdByName(const char *name);
+
+int getChannelNameByMessageId(int messageId, char *outChannelName, size_t outLen);
+
+HistoryEntry *fetchChannelHistory(const char *channelName, int *outCount);
+
+int createChannelInDb(const char *name);
+
+int deleteChannelInDb(const char *name);
+
+int setUserRoleByPseudo(const char *pseudo, const char *rankStr);

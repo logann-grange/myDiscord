@@ -21,6 +21,8 @@ void editMessage(Message *message, char *new_message);
 
 void addReaction(Message *message, char *reaction);
 
+int deleteMessageById(int id);
+
 
 
 

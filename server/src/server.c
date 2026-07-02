@@ -2,9 +2,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
+#include <time.h>
 #include "../include/user.h"
 #include "../include/message.h"
 #include "../include/login.h"
+#include "../include/channel.h"
+#include "roles.h"
 #include "protocol.h"
 #include "net_utils.h"
 
@@ -37,18 +40,13 @@
 #define MAX_CLIENTS 10
 #define PORT 8080
 
-// Doivent correspondre à ce qu'utilisent login_logic.h / register_logic.h
-#ifndef SALT_LEN
-#define SALT_LEN 16
-#endif
-#ifndef HASH_LEN
-#define HASH_LEN 32
-#endif
-
 typedef struct {
     SOCKET socket;
     int active;
     int loggedIn;
+    int userId;
+    UserRole role;
+    time_t timeoutUntil;
     char pseudo[32];
 } Client;
 
@@ -56,13 +54,9 @@ Client clients[MAX_CLIENTS];
 SOCKET listenSocket;
 volatile int running = 1;
 
-
-// ---------------------------------------------------------------------
-// Envoie la struct User entiere a un client (inchange)
 // ---------------------------------------------------------------------
 int sendUser(SOCKET sock, User user) {
     uint32_t netId = htonl((uint32_t)user.id);
-
     int sent = 0;
     const char *idData = (const char*)&netId;
     while (sent < (int)sizeof(netId)) {
@@ -70,7 +64,6 @@ int sendUser(SOCKET sock, User user) {
         if (n <= 0) return -1;
         sent += n;
     }
-
     if (sendString(sock, user.name)      < 0) return -1;
     if (sendString(sock, user.firstName) < 0) return -1;
     if (sendString(sock, user.pseudo)    < 0) return -1;
@@ -79,33 +72,51 @@ int sendUser(SOCKET sock, User user) {
     if (sendString(sock, user.ip)        < 0) return -1;
     if (sendString(sock, user.rank)      < 0) return -1;
     if (sendString(sock, user.status)    < 0) return -1;
-
     return 0;
 }
 
-// ---------------------------------------------------------------------
-// Envoie un message a tous les clients actifs et loggues
-// ---------------------------------------------------------------------
-void broadcastMessage(const char *message, SOCKET excludeSocket)
-{
+void broadcastChatMessage(const char *channel, const char *auteur, const char *texte, int messageId) {
+    char idStr[16];
+    snprintf(idStr, sizeof(idStr), "%d", messageId);
     LOCK();
     for (int i = 0; i < MAX_CLIENTS; i++) {
-        if (clients[i].active && clients[i].loggedIn && clients[i].socket != excludeSocket) {
-
-            if (excludeSocket != INVALID_SOCKET && strcmp(clients[i].pseudo, "Client3") == 0) {
-                continue;
-            }
-
-            send(clients[i].socket, message, (int)strlen(message), 0);
+        if (clients[i].active && clients[i].loggedIn) {
+            sendType(clients[i].socket, MSG_CHAT_INCOMING);
+            sendString(clients[i].socket, channel);
+            sendString(clients[i].socket, auteur);
+            sendString(clients[i].socket, texte);
+            sendString(clients[i].socket, idStr);
         }
     }
     UNLOCK();
 }
 
-// ---------------------------------------------------------------------
-// Phase d'authentification : traite salt-request / login / register
-// jusqu'a connexion reussie (ou deconnexion du client)
-// Retourne 0 si le client est authentifie et pret pour le chat, -1 sinon
+void broadcastMessageDeleted(const char *channel, int messageId) {
+    char idStr[16];
+    snprintf(idStr, sizeof(idStr), "%d", messageId);
+    LOCK();
+    for (int i = 0; i < MAX_CLIENTS; i++) {
+        if (clients[i].active && clients[i].loggedIn) {
+            sendType(clients[i].socket, MSG_MESSAGE_DELETED_BROADCAST);
+            sendString(clients[i].socket, channel);
+            sendString(clients[i].socket, idStr);
+        }
+    }
+    UNLOCK();
+}
+
+static int findClientIndexByPseudo(const char *pseudo) {
+    LOCK();
+    for (int i = 0; i < MAX_CLIENTS; i++) {
+        if (clients[i].active && clients[i].loggedIn && strcmp(clients[i].pseudo, pseudo) == 0) {
+            UNLOCK();
+            return i;
+        }
+    }
+    UNLOCK();
+    return -1;
+}
+
 // ---------------------------------------------------------------------
 static int handleAuthPhase(int index) {
     SOCKET sock = clients[index].socket;
@@ -125,8 +136,6 @@ static int handleAuthPhase(int index) {
                 memcpy(salt_hex, stored, SALT_LEN * 2);
                 salt_hex[SALT_LEN * 2] = '\0';
             }
-            // salt_hex reste vide si le pseudo n'existe pas
-
             sendType(sock, MSG_LOGIN_SALT_RESPONSE);
             sendString(sock, salt_hex);
             continue;
@@ -138,7 +147,6 @@ static int handleAuthPhase(int index) {
             if (recvString(sock, hash, sizeof(hash)) < 0) return -1;
 
             User *u = login(pseudo, hash, "127.0.0.1");
-
             sendType(sock, MSG_LOGIN_RESPONSE);
             if (u) {
                 sendString(sock, "OK");
@@ -146,9 +154,12 @@ static int handleAuthPhase(int index) {
                 strncpy(clients[index].pseudo, pseudo, sizeof(clients[index].pseudo) - 1);
                 clients[index].pseudo[sizeof(clients[index].pseudo) - 1] = '\0';
                 clients[index].loggedIn = 1;
+                clients[index].userId = u->id;
+                clients[index].role = roleFromString(u->rank);
+                clients[index].timeoutUntil = 0;
                 UNLOCK();
                 freeUser(u);
-                return 0; // authentifie, on passe au chat
+                return 0;
             } else {
                 sendString(sock, "Pseudo ou mot de passe incorrect.");
             }
@@ -166,25 +177,225 @@ static int handleAuthPhase(int index) {
             if (recvString(sock, salt_hex, sizeof(salt_hex)) < 0) return -1;
             if (recvString(sock, hash_hex, sizeof(hash_hex)) < 0) return -1;
 
-            // Mot de passe securise stocke = salt_hex + hash_hex concatenes
             char securedPassword[SALT_LEN * 2 + HASH_LEN * 2 + 1];
             snprintf(securedPassword, sizeof(securedPassword), "%s%s", salt_hex, hash_hex);
 
-            int ok = registerUser(nom[0], prenom, pseudo, email, securedPassword);
-
+            int ok = registerUser(nom, prenom, pseudo, email, securedPassword);
             sendType(sock, MSG_REGISTER_RESPONSE);
-            sendString(sock, ok == 0 ? "OK" : "Erreur lors de l'inscription (pseudo/email deja pris ?).");
+            sendString(sock, ok ? "OK" : "Erreur lors de l'inscription (pseudo/email deja pris ?).");
             continue;
         }
-
-        // Type inconnu en phase d'authentification : on ignore et on continue
     }
-
     return -1;
 }
 
 // ---------------------------------------------------------------------
-// Thread dedie a un client : authentification puis diffusion des messages
+static void sendModResponse(SOCKET sock, int ok, const char *msg) {
+    sendType(sock, MSG_MOD_RESPONSE);
+    sendString(sock, ok ? "OK" : msg);
+}
+
+static void handleChatPhase(int index) {
+    SOCKET sock = clients[index].socket;
+    MessageType type;
+
+    while (running) {
+        if (recvType(sock, &type) < 0) break;
+
+        if (type == MSG_CHAT) {
+            char channel[64], texte[1024];
+            if (recvString(sock, channel, sizeof(channel)) < 0) break;
+            if (recvString(sock, texte, sizeof(texte)) < 0) break;
+
+            LOCK();
+            time_t until = clients[index].timeoutUntil;
+            UNLOCK();
+            if (until > time(NULL)) {
+                sendModResponse(sock, 0, "Vous etes en timeout, message refuse.");
+                continue;
+            }
+
+            int channelId = getChannelIdByName(channel);
+            int newMsgId = -1;
+            if (channelId >= 0) {
+                Message msg;
+                msg.idUser = clients[index].userId;
+                msg.idChannel = channelId;
+                msg.date = time(NULL);
+                msg.text = texte;
+                msg.status = "actif";
+                newMsgId = insertMessage(&msg);
+            }
+
+            printf("\n[#%s] %s: %s\nVous: ", channel, clients[index].pseudo, texte);
+            fflush(stdout);
+            broadcastChatMessage(channel, clients[index].pseudo, texte, newMsgId);
+            continue;
+        }
+
+        if (type == MSG_CHANNEL_LIST_REQUEST) {
+            int count = 0;
+            char **names = listAllChannelNames(&count);
+            sendType(sock, MSG_CHANNEL_LIST_RESPONSE);
+            char countStr[16];
+            snprintf(countStr, sizeof(countStr), "%d", count);
+            sendString(sock, countStr);
+            for (int i = 0; i < count; i++) sendString(sock, names[i]);
+            freeChannelNames(names, count);
+            continue;
+        }
+
+        if (type == MSG_CHANNEL_HISTORY_REQUEST) {
+            char channel[64];
+            if (recvString(sock, channel, sizeof(channel)) < 0) break;
+            int count = 0;
+            HistoryEntry *entries = fetchChannelHistory(channel, &count);
+            sendType(sock, MSG_CHANNEL_HISTORY_RESPONSE);
+            char countStr[16];
+            snprintf(countStr, sizeof(countStr), "%d", count);
+            sendString(sock, countStr);
+            for (int i = 0; i < count; i++) {
+                char idStr[16];
+                snprintf(idStr, sizeof(idStr), "%d", entries[i].id);
+                sendString(sock, entries[i].auteur);
+                sendString(sock, entries[i].texte);
+                sendString(sock, entries[i].date);
+                sendString(sock, idStr);
+            }
+            free(entries);
+            continue;
+        }
+
+        if (type == MSG_KICK_REQUEST) {
+            char pseudoCible[64];
+            if (recvString(sock, pseudoCible, sizeof(pseudoCible)) < 0) break;
+
+            if (clients[index].role < ROLE_MODERATEUR) {
+                sendModResponse(sock, 0, "Permission refusee.");
+                continue;
+            }
+            int targetIdx = findClientIndexByPseudo(pseudoCible);
+            if (targetIdx < 0) {
+                sendModResponse(sock, 0, "Utilisateur introuvable ou deconnecte.");
+                continue;
+            }
+            LOCK();
+            if (clients[targetIdx].role >= clients[index].role) {
+                UNLOCK();
+                sendModResponse(sock, 0, "Impossible de kick un utilisateur de rang egal ou superieur.");
+                continue;
+            }
+            closesocket(clients[targetIdx].socket);
+            clients[targetIdx].active = 0;
+            clients[targetIdx].loggedIn = 0;
+            UNLOCK();
+            sendModResponse(sock, 1, NULL);
+            continue;
+        }
+
+        if (type == MSG_TIMEOUT_REQUEST) {
+            char pseudoCible[64], dureeStr[16];
+            if (recvString(sock, pseudoCible, sizeof(pseudoCible)) < 0) break;
+            if (recvString(sock, dureeStr, sizeof(dureeStr)) < 0) break;
+
+            if (clients[index].role < ROLE_MODERATEUR) {
+                sendModResponse(sock, 0, "Permission refusee.");
+                continue;
+            }
+            int targetIdx = findClientIndexByPseudo(pseudoCible);
+            if (targetIdx < 0) {
+                sendModResponse(sock, 0, "Utilisateur introuvable ou deconnecte.");
+                continue;
+            }
+            LOCK();
+            if (clients[targetIdx].role >= clients[index].role) {
+                UNLOCK();
+                sendModResponse(sock, 0, "Impossible de timeout un utilisateur de rang egal ou superieur.");
+                continue;
+            }
+            int duree = atoi(dureeStr);
+            if (duree <= 0) duree = 60;
+            clients[targetIdx].timeoutUntil = time(NULL) + duree;
+            UNLOCK();
+            sendModResponse(sock, 1, NULL);
+            continue;
+        }
+
+        if (type == MSG_DELETE_MESSAGE_REQUEST) {
+            char idStr[16];
+            if (recvString(sock, idStr, sizeof(idStr)) < 0) break;
+
+            if (clients[index].role < ROLE_MODERATEUR) {
+                sendModResponse(sock, 0, "Permission refusee.");
+                continue;
+            }
+
+            int msgId = atoi(idStr);
+            char channelName[64];
+            if (getChannelNameByMessageId(msgId, channelName, sizeof(channelName)) == 0
+                && deleteMessageById(msgId)) {
+                broadcastMessageDeleted(channelName, msgId); // push a tout le monde
+                sendModResponse(sock, 1, NULL);
+            } else {
+                sendModResponse(sock, 0, "Erreur lors de la suppression du message.");
+            }
+            continue;
+        }
+
+        if (type == MSG_CREATE_CHANNEL_REQUEST) {
+            char nom[64];
+            if (recvString(sock, nom, sizeof(nom)) < 0) break;
+
+            if (clients[index].role < ROLE_ADMINISTRATEUR) {
+                sendModResponse(sock, 0, "Permission refusee.");
+                continue;
+            }
+            int ok = createChannelInDb(nom);
+            sendModResponse(sock, ok, "Erreur lors de la creation du canal (nom deja pris ?).");
+            continue;
+        }
+
+        if (type == MSG_DELETE_CHANNEL_REQUEST) {
+            char nom[64];
+            if (recvString(sock, nom, sizeof(nom)) < 0) break;
+
+            if (clients[index].role < ROLE_ADMINISTRATEUR) {
+                sendModResponse(sock, 0, "Permission refusee.");
+                continue;
+            }
+            int ok = deleteChannelInDb(nom);
+            sendModResponse(sock, ok, "Erreur lors de la suppression du canal.");
+            continue;
+        }
+
+        if (type == MSG_SET_ROLE_REQUEST) {
+            char pseudoCible[64], roleStr[8];
+            if (recvString(sock, pseudoCible, sizeof(pseudoCible)) < 0) break;
+            if (recvString(sock, roleStr, sizeof(roleStr)) < 0) break;
+
+            if (clients[index].role < ROLE_ADMINISTRATEUR) {
+                sendModResponse(sock, 0, "Permission refusee.");
+                continue;
+            }
+            UserRole nouveauRole = (UserRole)atoi(roleStr);
+            const char *rankStr = nouveauRole == ROLE_ADMINISTRATEUR ? "administrateur"
+                                 : nouveauRole == ROLE_MODERATEUR    ? "moderateur"
+                                 : "member";
+            int ok = setUserRoleByPseudo(pseudoCible, rankStr);
+            if (ok) {
+                int targetIdx = findClientIndexByPseudo(pseudoCible);
+                if (targetIdx >= 0) {
+                    LOCK();
+                    clients[targetIdx].role = nouveauRole;
+                    UNLOCK();
+                }
+            }
+            sendModResponse(sock, ok, "Erreur lors du changement de role (pseudo introuvable ?).");
+            continue;
+        }
+    }
+}
+
 // ---------------------------------------------------------------------
 THREAD_RET handleClient(void *arg) {
     int index = *(int*)arg;
@@ -206,26 +417,10 @@ THREAD_RET handleClient(void *arg) {
 #endif
     }
 
-    printf("\n%s authentifie.\nVous: ", clients[index].pseudo);
+    printf("\n%s authentifie (role %d).\nVous: ", clients[index].pseudo, clients[index].role);
     fflush(stdout);
 
-    char buffer[1024];
-    int bytesReceived;
-
-    while (running) {
-        bytesReceived = recv(sock, buffer, sizeof(buffer) - 1, 0);
-        if (bytesReceived <= 0) break;
-        buffer[bytesReceived] = '\0';
-
-        char fullMessage[1100];
-        snprintf(fullMessage, sizeof(fullMessage), "%s: %s", clients[index].pseudo, buffer);
-        printf("\n%s\nVous: ", fullMessage);
-        fflush(stdout);
-
-        broadcastMessage(fullMessage, sock);
-
-        if (strcmp(buffer, "/quit") == 0) break;
-    }
+    handleChatPhase(index);
 
     closesocket(sock);
     LOCK();
@@ -242,8 +437,6 @@ THREAD_RET handleClient(void *arg) {
 #endif
 }
 
-// ---------------------------------------------------------------------
-// Thread d'acceptation (inchange, sauf init loggedIn)
 // ---------------------------------------------------------------------
 THREAD_RET acceptClients(void *arg) {
     struct sockaddr_in clientAddr;
@@ -271,6 +464,9 @@ THREAD_RET acceptClients(void *arg) {
         clients[slot].socket = newSocket;
         clients[slot].active = 1;
         clients[slot].loggedIn = 0;
+        clients[slot].userId = -1;
+        clients[slot].role = ROLE_UTILISATEUR;
+        clients[slot].timeoutUntil = 0;
         snprintf(clients[slot].pseudo, sizeof(clients[slot].pseudo), "Client%d", slot + 1);
         UNLOCK();
 
@@ -296,30 +492,20 @@ THREAD_RET acceptClients(void *arg) {
 #endif
 }
 
-
 int main() {
     struct sockaddr_in serverAddr;
     char message[1024];
 
 #ifdef _WIN32
     WSADATA wsaData;
-    if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
-        printf("Erreur WSAStartup\n");
-        return 1;
-    }
+    if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) { printf("Erreur WSAStartup\n"); return 1; }
     InitializeCriticalSection(&clientsMutex);
 #endif
 
-    for (int i = 0; i < MAX_CLIENTS; i++) {
-        clients[i].active = 0;
-        clients[i].loggedIn = 0;
-    }
+    for (int i = 0; i < MAX_CLIENTS; i++) { clients[i].active = 0; clients[i].loggedIn = 0; }
 
     listenSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    if (listenSocket == INVALID_SOCKET) {
-        printf("Erreur creation socket\n");
-        return 1;
-    }
+    if (listenSocket == INVALID_SOCKET) { printf("Erreur creation socket\n"); return 1; }
 
     int opt = 1;
 #ifdef _WIN32
@@ -333,15 +519,10 @@ int main() {
     serverAddr.sin_port = htons(PORT);
 
     if (bind(listenSocket, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) == SOCKET_ERROR) {
-        printf("Erreur bind\n");
-        closesocket(listenSocket);
-        return 1;
+        printf("Erreur bind\n"); closesocket(listenSocket); return 1;
     }
-
     if (listen(listenSocket, SOMAXCONN) == SOCKET_ERROR) {
-        printf("Erreur listen\n");
-        closesocket(listenSocket);
-        return 1;
+        printf("Erreur listen\n"); closesocket(listenSocket); return 1;
     }
 
     printf("Serveur en attente de connexions sur le port %d...\n", PORT);
@@ -356,28 +537,16 @@ int main() {
     printf("Vous: ");
     fflush(stdout);
     while (running) {
-        if (fgets(message, sizeof(message), stdin) == NULL) {
-            running = 0;
-            break;
-        }
+        if (fgets(message, sizeof(message), stdin) == NULL) { running = 0; break; }
         message[strcspn(message, "\n")] = '\0';
-
-        char fullMessage[1100];
-        snprintf(fullMessage, sizeof(fullMessage), "Serveur: %s", message);
-        broadcastMessage(fullMessage, INVALID_SOCKET);
-
-        if (strcmp(message, "/quit") == 0) {
-            running = 0;
-            break;
-        }
+        broadcastChatMessage("général", "Serveur", message, -1);
+        if (strcmp(message, "/quit") == 0) { running = 0; break; }
         printf("Vous: ");
         fflush(stdout);
     }
 
     LOCK();
-    for (int i = 0; i < MAX_CLIENTS; i++) {
-        if (clients[i].active) closesocket(clients[i].socket);
-    }
+    for (int i = 0; i < MAX_CLIENTS; i++) if (clients[i].active) closesocket(clients[i].socket);
     UNLOCK();
 
     closesocket(listenSocket);

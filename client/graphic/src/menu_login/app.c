@@ -3,17 +3,27 @@
 #include "../../include/menu_login/register.h"
 #include "../../include/main_chat/chat_page.h"
 #include "../../include/main_chat/settings.h"
-
-
+#include "../../../logic/include/menu_login/network.h"
 
 static void on_app_window_destroy(GtkWidget *widget, gpointer data) {
     AppWidgets *w = (AppWidgets *)data;
+    network_disconnect();
     g_free(w);
 }
 
 void show_main_window(GtkApplication *app) {
     AppWidgets *w = g_malloc(sizeof(AppWidgets));
-     w->app = app;
+    w->app = app;
+
+    if (!network_connect("10.10.6.228", 8080)) {
+        GtkWidget *err = gtk_message_dialog_new(NULL, GTK_DIALOG_MODAL,
+            GTK_MESSAGE_ERROR, GTK_BUTTONS_OK,
+            "Impossible de se connecter au serveur.");
+        gtk_dialog_run(GTK_DIALOG(err));
+        gtk_widget_destroy(err);
+        // On continue quand meme : les boutons login/register echoueront proprement
+        // avec un message d'erreur plutot que de planter.
+    }
 
     GtkCssProvider *provider = gtk_css_provider_new();
     gtk_css_provider_load_from_path(provider, "./client/graphic/src/style/style.css", NULL);
@@ -40,5 +50,4 @@ void show_main_window(GtkApplication *app) {
     gtk_container_add(GTK_CONTAINER(w->window), w->stack);
     g_signal_connect(w->window, "destroy", G_CALLBACK(on_app_window_destroy), w);
     gtk_widget_show_all(w->window);
-    
 }

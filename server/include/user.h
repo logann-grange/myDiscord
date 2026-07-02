@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "bddManager.h"
 
 typedef struct {
@@ -23,3 +24,5 @@ void changeUserRank(User *user, char *rank);
 void changeUserStatus(User *user, char *status);
 
 void changePseudo(User *user, char *pseudo);
+
+void freeUser(User *user);

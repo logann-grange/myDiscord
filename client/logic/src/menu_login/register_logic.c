@@ -26,34 +26,36 @@ void byte_to_hex(const unsigned char *bytes, int len, char *hex_str) {
     hex_str[len * 2] = '\0';
 }
 
-void hash_password(const char *password) {
+char *hash_password(const char *password) {
     unsigned char salt[SALT_LEN];
     unsigned char hash[HASH_LEN];
 
-    // Génère un sel aléatoire
     if (!RAND_bytes(salt, SALT_LEN)) {
         fprintf(stderr, "Erreur génération sel\n");
-        return;
+        return NULL;
     }
 
-    // Applique PBKDF2 avec SHA-256
     if (!PKCS5_PBKDF2_HMAC(password, strlen(password),
-                            salt, SALT_LEN,
-                            ITERATIONS,
-                            EVP_sha256(),
-                            HASH_LEN, hash)) {
+                            salt, SALT_LEN, ITERATIONS,
+                            EVP_sha256(), HASH_LEN, hash)) {
         fprintf(stderr, "Erreur PBKDF2\n");
-        return;
+        return NULL;
     }
 
-    // Convertit en hexadécimal
     char salt_hex[SALT_LEN * 2 + 1];
     char hash_hex[HASH_LEN * 2 + 1];
     byte_to_hex(salt, SALT_LEN, salt_hex);
     byte_to_hex(hash, HASH_LEN, hash_hex);
 
+    char *result = malloc(strlen(hash_hex) + 1);
+    if (!result) {
+        fprintf(stderr, "Erreur malloc\n");
+        return NULL;
+    }
+    strcpy(result, hash_hex);
+
     printf("Salt: %s\n", salt_hex);
     printf("Hash: %s\n", hash_hex);
 
-    // TODO: envoyer salt_hex + hash_hex au serveur
+    return result;
 }

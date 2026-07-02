@@ -21,6 +21,6 @@ RegisterResult validate_register(const char *nom, const char *prenom, const char
 
 void byte_to_hex(const unsigned char *bytes, int len, char *hex_str);
 
-void hash_password(const char *password);
+char *hash_password(const char *password);
 
 #endif

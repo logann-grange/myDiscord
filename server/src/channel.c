@@ -8,6 +8,9 @@ Channel *createChannel(int id, char* name, char *permission, char *status)
     channel->permission = permission;
     channel->status = status;
 
+    fillListUser(channel);
+    fillListMessage(channel);
+
     return channel;
 }
 

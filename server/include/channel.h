@@ -14,7 +14,7 @@ typedef struct {
     char *status;
 } Channel;
 
-Channel *createChannel(int id, char* name, char *permission, char *status, User **ListUser);
+Channel *createChannel(int id, char* name, char *permission, char *status);
 
 void changeChannelName(Channel *channel, char *name);
 

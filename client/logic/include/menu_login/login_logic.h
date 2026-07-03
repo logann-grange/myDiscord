@@ -4,7 +4,6 @@
 #include <openssl/evp.h>
 #include <openssl/rand.h>
 #include <string.h>
-#include "../network/network_client.h"
 
 #define SALT_LEN   16
 #define HASH_LEN   32

@@ -1,4 +1,5 @@
 #include "../../include/moderateur/admin_logic.h"
+#include <string.h>
 #include "../../include/menu_login/network.h"
 
 AdminResult create_channel(const char *nom_canal, UserRole role_executeur) {

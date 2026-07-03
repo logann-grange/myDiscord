@@ -1,7 +1,16 @@
 #include "../../include/menu_login/login.h"
-#include "menu_login/login_logic.h"
+#include "../../../logic/include/menu_login/login_logic.h"
 #include "../../include/main_chat/chat_page.h"
 #include "../../../logic/include/menu_login/network.h"
+
+
+static void on_activate(GtkApplication *app, gpointer data) {
+    // Connexion au serveur avant d'afficher l'UI
+    if (!network_connect("10.10.76.132", 8080)) {
+        fprintf(stderr, "Impossible de se connecter au serveur\n");
+    }
+    show_main_window(app);
+}
 
 static void on_login_clicked(GtkButton *btn, gpointer data) {
     AppWidgets *w = (AppWidgets *)data;

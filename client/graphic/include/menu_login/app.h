@@ -4,11 +4,7 @@
 #include <gtk/gtk.h>
 #include <string.h>
 
-typedef enum {
-    ROLE_UTILISATEUR,
-    ROLE_MODERATEUR,
-    ROLE_ADMINISTRATEUR
-} UserRole;
+#include "../../../logic/include/user_role.h"
 
 typedef struct {
     GtkWidget *window;

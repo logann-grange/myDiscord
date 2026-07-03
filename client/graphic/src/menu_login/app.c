@@ -1,6 +1,7 @@
 #include "../../include/menu_login/app.h"
 #include "../../include/menu_login/login.h"
 #include "../../include/menu_login/register.h"
+#include "../../../logic/include/menu_login/network.h"
 #include "../../include/main_chat/chat_page.h"
 #include "../../include/main_chat/settings.h"
 #include "../../../logic/include/menu_login/network.h"
@@ -15,7 +16,8 @@ void show_main_window(GtkApplication *app) {
     AppWidgets *w = g_malloc(sizeof(AppWidgets));
     w->app = app;
 
-    if (!network_connect("10.10.6.228", 8080)) {
+    // Try localhost first, then fallback to the previously hardcoded IP
+    if (!network_connect("127.0.0.1", 8080) && !network_connect("10.10.6.228", 8080) && !network_connect("10.10.76.132", 8080)) {
         GtkWidget *err = gtk_message_dialog_new(NULL, GTK_DIALOG_MODAL,
             GTK_MESSAGE_ERROR, GTK_BUTTONS_OK,
             "Impossible de se connecter au serveur.");

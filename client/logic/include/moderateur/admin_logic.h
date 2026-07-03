@@ -1,8 +1,7 @@
 #ifndef ADMIN_LOGIC_H
 #define ADMIN_LOGIC_H
 
-#include "../../graphic/include/menu_login/app.h"
-#include "../network/network_client.h"
+#include "../user_role.h"
 
 typedef enum {
     ADMIN_OK,

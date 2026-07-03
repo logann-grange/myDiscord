@@ -1,3 +1,6 @@
+#ifndef SERVER_INCLUDE_USER_H
+#define SERVER_INCLUDE_USER_H
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -26,3 +29,5 @@ void changeUserStatus(User *user, char *status);
 void changePseudo(User *user, char *pseudo);
 
 void freeUser(User *user);
+
+#endif /* SERVER_INCLUDE_USER_H */

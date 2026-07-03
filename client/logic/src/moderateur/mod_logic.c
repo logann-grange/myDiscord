@@ -1,4 +1,6 @@
 #include "../../include/moderateur/mod_logic.h"
+#include <string.h>
+#include "../../include/menu_login/network.h"
 
 ModResult kick_user(const char *pseudo_cible, UserRole role_executeur,UserRole role_cible) {
     if (role_executeur < ROLE_MODERATEUR || role_executeur < role_cible) {

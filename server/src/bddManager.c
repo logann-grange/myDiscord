@@ -4,8 +4,8 @@
 PGconn *bddConnexion(void)
 {
     PGconn *conn = PQconnectdb(
-        "host=10.10.41.112 port=5432 dbname=discord user=admin password=C-L-M|130142254517%3");
-        //"host=10.10.71.201 port=5432 dbname=discordlike user=app password=devpassword");
+        /*"host=10.10.41.112 port=5432 dbname=discord user=admin password=C-L-M|130142254517%3");*/
+        "host=10.10.71.201 port=5432 dbname=discordlike user=app password=devpassword");
 
     if (PQstatus(conn) != CONNECTION_OK) {
         fprintf(stderr, "Connexion échouée: %s\n", PQerrorMessage(conn));

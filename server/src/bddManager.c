@@ -4,8 +4,8 @@
 PGconn *bddConnexion(void)
 {
     PGconn *conn = PQconnectdb(
-        /*"host=10.10.41.112 port=5432 dbname=discord user=admin password=C-L-M|130142254517%3");*/
-        "host=10.10.71.201 port=5432 dbname=discordlike user=app password=devpassword");
+        "host=10.10.41.112 port=5432 dbname=discord user=admin password=C-L-M|130142254517%3");
+        //"host=10.10.71.201 port=5432 dbname=discordlike user=app password=devpassword");
 
     if (PQstatus(conn) != CONNECTION_OK) {
         fprintf(stderr, "Connexion échouée: %s\n", PQerrorMessage(conn));
@@ -219,17 +219,18 @@ void bddFreeResult(char ***table, int nrows, int ncols)
 }
 
 
-// int main() {
-//     PGconn *conn = bddConnexion();
+ int main() {
+    PGconn *conn = bddConnexion();
 
-//     const char *password = "admin";
-//     char *hashed = hash_password(password);
-//     if (!hashed) {
-//         fprintf(stderr, "Échec du hash\n");
-//         return 1;
-//     }
+    const char *password = "test";
+    char *hashed = hash_password(password);
+    if (!hashed) {
+        fprintf(stderr, "Échec du hash\n");
+        return 1;
+    }
 
-//     char *fields[] = {"email", "name", "first_name", "pseudo", "password", "status", "rank"};
-//     char *params[] = {"admin@discord.fr", "admin", "admin", "admin", hashed, "", "admin"};
+    char *fields[] = {"email", "name", "firstName", "pseudo", "password", "status", "rank"};
+    char *params[] = {"test@discord.fr", "test", "test", "test", hashed, "", "member"};
 
-//     bddInsert("\"user\"", fields, params, 7);
+    bddInsert("\"users\"", fields, params, 7);
+}

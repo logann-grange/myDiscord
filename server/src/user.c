@@ -37,7 +37,7 @@ void changeUserRank(User *user, char *rank) {
     user->rank = strdup(rank);
     char *fields[] = {"rank"};
     char *params[] = {user->rank};
-    bddUpdate("user", fields, params, 1, user->id);
+    bddUpdate("\"user\"", fields, params, 1, user->id);
 }
 
 void changeUserStatus(User *user, char *status) {
@@ -45,7 +45,7 @@ void changeUserStatus(User *user, char *status) {
     user->status = strdup(status);
     char *fields[] = {"status"};
     char *params[] = {user->status};
-    bddUpdate("user", fields, params, 1, user->id);
+    bddUpdate("\"user\"", fields, params, 1, user->id);
 }
 
 void changePseudo(User *user, char *pseudo) {
@@ -53,5 +53,5 @@ void changePseudo(User *user, char *pseudo) {
     user->pseudo = strdup(pseudo);
     char *fields[] = {"pseudo"};
     char *params[] = {user->pseudo};
-    bddUpdate("user", fields, params, 1, user->id);
+    bddUpdate("\"user\"", fields, params, 1, user->id);
 }

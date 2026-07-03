@@ -32,8 +32,13 @@ static void on_reaction_clicked(GtkButton *btn, gpointer data) {
 
 static void on_send_clicked(GtkButton *btn, gpointer data) {
     AppWidgets *w = (AppWidgets *)data;
-    const char *text = gtk_entry_get_text(GTK_ENTRY(w->input_entry));
-    if (strlen(text) == 0) return;
+    const char *entry_text = gtk_entry_get_text(GTK_ENTRY(w->input_entry));
+    if (strlen(entry_text) == 0) return;
+
+    char text[1024];
+    strncpy(text, entry_text, sizeof(text) - 1);
+    text[sizeof(text) - 1] = '\0';
+
     printf("Message envoyé dans #%s : %s\n", w->current_channel, text);
     gtk_entry_set_text(GTK_ENTRY(w->input_entry), "");
     network_send_message(w->current_channel, text);

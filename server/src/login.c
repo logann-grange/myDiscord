@@ -12,7 +12,15 @@ int getStoredPassword(const char *pseudo, char *out, size_t outLen) {
     char *params[] = {(char*)pseudo};
     int nrows, ncols;
     char ***result = bddSelect("user", fields, params, 1, &nrows, &ncols);
+    printf("DEBUG getStoredPassword: nrows=%d ncols=%d\n", nrows, ncols);
     if (result == NULL) return -1;
+
+    // DEBUG: affiche toutes les colonnes de toutes les lignes retournées
+    for (int i = 0; i < nrows; i++) {
+        for (int j = 0; j < ncols; j++) {
+            printf("  [%d][%d] = %s\n", i, j, result[i][j] ? result[i][j] : "(null)");
+        }
+    }
 
     int found = -1;
     for (int i = 0; i < nrows; i++) {
@@ -31,11 +39,25 @@ int getStoredPassword(const char *pseudo, char *out, size_t outLen) {
 User *login(char *pseudo, char *hash, char *ip)
 {
     char stored[256];
-    if (getStoredPassword(pseudo, stored, sizeof(stored)) != 0) return NULL;
-    if (strlen(stored) <= (size_t)(SALT_LEN * 2)) return NULL;
+    if (getStoredPassword(pseudo, stored, sizeof(stored)) != 0) {
+        printf("DEBUG login: getStoredPassword a echoue pour pseudo='%s'\n", pseudo);
+        return NULL;
+    }
+    printf("DEBUG login: stored='%s' (len=%zu)\n", stored, strlen(stored));
+
+    if (strlen(stored) <= (size_t)(SALT_LEN * 2)) {
+        printf("DEBUG login: stored trop court (SALT_LEN=%d)\n", SALT_LEN);
+        return NULL;
+    }
 
     const char *storedHash = stored + (SALT_LEN * 2);
-    if (strcmp(storedHash, hash) != 0) return NULL;
+    printf("DEBUG login: storedHash='%s'\n", storedHash);
+    printf("DEBUG login: hashRecu   ='%s'\n", hash);
+
+    if (strcmp(storedHash, hash) != 0) {
+        printf("DEBUG login: hash ne correspond pas\n");
+        return NULL;
+    }
 
     char *fields[] = {"pseudo"};
     char *params[] = {pseudo};
@@ -86,5 +108,5 @@ int registerUser(char *name, char *firstName, char *pseudo, char *email, char *p
     char *fields[] = {"name", "first_name", "pseudo", "email", "password", "status", "rank"};
     char *params[] = {name, firstName, pseudo, email, password, "actif", "member"};
     // bddInsert renvoie maintenant l'id ou -1 : on garde ici une interface booléenne
-    return bddInsert("user", fields, params, 7) >= 0;
+    return bddInsert("\"user\"", fields, params, 7) >= 0;
 }

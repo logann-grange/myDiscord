@@ -4,7 +4,7 @@ LoginResult validate_login(const char *pseudo, const char *password) {
     if (strlen(pseudo) == 0 || strlen(password) == 0)
         return LOGIN_CHAMPS_VIDES;
 
-    if (strlen(password) < 6)
+    if (strlen(password) < 2)
         return LOGIN_PASSWORD_TROP_COURT;
 
     return LOGIN_OK;

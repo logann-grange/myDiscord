@@ -41,10 +41,13 @@ void writeMessage(Message *message, char c) // ajoute un caractere au message
 
 int insertMessage(Message *message)
 {
-    char idUserStr[16], idChannelStr[16], dateStr[32];
+    char idUserStr[16], idChannelStr[16], dateStr[64];
     snprintf(idUserStr, sizeof(idUserStr), "%d", message->idUser);
     snprintf(idChannelStr, sizeof(idChannelStr), "%d", message->idChannel);
-    snprintf(dateStr, sizeof(dateStr), "%ld", (long)message->date);
+    
+    // Convertit le timestamp en format lisible par PostgreSQL
+    struct tm *tm_info = localtime(&message->date);
+    strftime(dateStr, sizeof(dateStr), "%Y-%m-%d %H:%M:%S", tm_info);
 
     char *fields[] = {"id_user", "date", "text", "status", "id_channel"};
     char *params[] = {idUserStr, dateStr, message->text, message->status, idChannelStr};

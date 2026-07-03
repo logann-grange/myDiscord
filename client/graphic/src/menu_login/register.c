@@ -1,5 +1,5 @@
 #include "../../include/menu_login/register.h"
-#include "menu_login/register_logic.h"
+#include "../../../logic/include/menu_login/register_logic.h"
 #include "../../../logic/include/menu_login/network.h"
 
 static void on_register_clicked(GtkButton *btn, gpointer data) {

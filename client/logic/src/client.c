@@ -53,6 +53,7 @@ THREAD_RET receiveMessages(void *arg) {
 #endif
 }
 
+#if 0
 int main(int argc, char *argv[]) {
     struct sockaddr_in serverAddr;
     char message[1024];
@@ -159,3 +160,4 @@ int main(int argc, char *argv[]) {
 #endif
     return 0;
 }
+#endif

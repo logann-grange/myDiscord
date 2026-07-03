@@ -2,7 +2,6 @@
 #define MESSAGERIE_H
 
 #include "../menu_login/app.h"
-#include "../../logic/include/network/network_client.h"
 #include "../../../logic/include/menu_login/network.h"
 
 GtkWidget *build_messagerie(AppWidgets *w);

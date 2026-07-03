@@ -83,7 +83,7 @@ int registerUser(char *name, char *firstName, char *pseudo, char *email, char *p
     if (pseudoExists(pseudo)) return -1;
     if (emailExists(email))   return -1;
 
-    char *fields[] = {"name", "firstName", "pseudo", "email", "password", "status", "rank"};
+    char *fields[] = {"name", "first_name", "pseudo", "email", "password", "status", "rank"};
     char *params[] = {name, firstName, pseudo, email, password, "actif", "member"};
     // bddInsert renvoie maintenant l'id ou -1 : on garde ici une interface booléenne
     return bddInsert("user", fields, params, 7) >= 0;

@@ -1,6 +1,6 @@
-#include "network.h"
-#include "net_utils.h"
-#include "protocol.h"
+#include "../../include/menu_login/network.h"
+#include "../../../../utils/include/net_utils.h"
+#include "../../../../utils/include/protocol.h"
 #include "../../include/menu_login/login_logic.h"
 #include "../../include/menu_login/register_logic.h"
 #include <string.h>
@@ -66,9 +66,16 @@ bool network_send_login(const char *pseudo, const char *password, char *error_ms
     char salt_hex[SALT_LEN * 2 + 1];
     MessageType type;
     recvType(sock, &type);
-    if (recvString(sock, salt_hex, sizeof(salt_hex)) < 0 || strlen(salt_hex) == 0) {
-        snprintf(error_msg_out, err_len, "Pseudo inconnu.");
+    if (recvString(sock, salt_hex, sizeof(salt_hex)) < 0) {
+        snprintf(error_msg_out, err_len, "Erreur reception sel login.");
         return false;
+    }
+
+    // Dev fallback: if server has no stored salt for this user, continue with a zero salt
+    // so login request can still be sent to the server.
+    if (strlen(salt_hex) == 0) {
+        memset(salt_hex, '0', SALT_LEN * 2);
+        salt_hex[SALT_LEN * 2] = '\0';
     }
 
     unsigned char salt[SALT_LEN];

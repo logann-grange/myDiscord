@@ -1,6 +1,6 @@
 #include "../../include/moderateur/admin_panel.h"
-#include "moderateur/mod_logic.h"
-#include "moderateur/admin_logic.h"
+#include "../../../logic/include/moderateur/mod_logic.h"
+#include "../../../logic/include/moderateur/admin_logic.h"
 #include <string.h>
 #include <stdio.h>
 
